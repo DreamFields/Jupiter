@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "*.s": "bat",
+        "*.md": "markdown",
+        "*.cjson": "jsonc",
+        "*.wxss": "css",
+        "*.wxs": "javascript",
+        "filesystem": "cpp",
+        "iostream": "cpp",
+        "memory": "cpp"
+    }
+}
