@@ -1,3 +1,6 @@
+build/
+
+# C++.gitignore from https://github.com/github/gitignore/blob/master/C%2B%2B.gitignore
 # Prerequisites
 *.d
 
@@ -30,6 +33,20 @@
 *.exe
 *.out
 *.app
+# finish C++.gitignore
 
-# build
-build
+
+
+# CMake.gitignore https://github.com/github/gitignore/blob/master/CMake.gitignore
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+# finish CMake.ignore
