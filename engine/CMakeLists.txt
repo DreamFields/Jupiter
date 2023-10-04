@@ -1,8 +1,8 @@
 # 设置目录变量
 set(ENGINE_ROOT_DIR "${MERCURY_ROOT_DIR}/engine")
-set(THIRD_PARTY_DIR "${ENGINE_ROOT_DIR}/3rdparty")
+set(LIBRARY_DIR "${ENGINE_ROOT_DIR}/library")
 
-add_subdirectory(3rdparty)
+add_subdirectory(library)
 
 add_subdirectory(source/runtime)
 add_subdirectory(source/editor)
