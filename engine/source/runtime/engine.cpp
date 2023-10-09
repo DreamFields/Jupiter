@@ -32,12 +32,28 @@ namespace Mercury
 
     bool MercuryEngine::tickOneFrame(float delta_time)
     {
+        calculateFPS(delta_time);
         g_runtime_global_context.m_window_system->pollEvents();
         g_runtime_global_context.m_window_system->setTitle(
             std::string("Mercury - " + std::to_string(getFPS()) + " FPS").c_str()
         );
         const bool should_window_close = g_runtime_global_context.m_window_system->shouldClose();
         return !should_window_close;
+    }
+
+    const float MercuryEngine::s_fps_alpha = 1.f / 100;
+    void MercuryEngine::calculateFPS(float delta_time) {
+        ++m_frame_count;
+
+        if (1 == m_frame_count) {
+            m_average_duration = delta_time;
+        }
+        else {
+            // 上一帧的m_average_duration与delta_time以99：1的权重求加权平均得到当前帧的m_average_duration
+            m_average_duration = m_average_duration * (1 - s_fps_alpha) + delta_time * s_fps_alpha;
+        }
+        m_fps = static_cast<int>(1.0f / m_average_duration);
+
     }
 
     float MercuryEngine::calculateDeltaTime()

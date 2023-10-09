@@ -18,6 +18,17 @@ add_library(${TARGET_NAME} ${HEADER_FILES} ${SOURCE_FILES})
 target_link_libraries(${TARGET_NAME} PUBLIC glfw)
 target_link_libraries(${TARGET_NAME} PUBLIC ${vulkan_lib})
 
+# begin Vulkan
+target_include_directories(
+    ${TARGET_NAME}
+    PUBLIC $<BUILD_INTERFACE:${vulkan_include}>)
+
+target_include_directories(
+    ${TARGET_NAME}
+    PUBLIC $<BUILD_INTERFACE:${LIBRARY_DIR}/VulkanSDK/include/vma>
+)
+# end Vulkan
+
 # 将目录包含到对应目标里，不写这句话可就找不到.h文件了
 target_include_directories(
     ${TARGET_NAME}
@@ -31,14 +42,3 @@ target_include_directories(
     $<INSTALL_INTERFACE:include/${TARGET_NAME}-${PROJECT_VERSION}>
 )
 
-# begin Vulkan
-target_include_directories(
-    ${TARGET_NAME}
-    PUBLIC $<BUILD_INTERFACE:${vulkan_include}>)
-
-target_include_directories(
-    ${TARGET_NAME}
-    PUBLIC $<BUILD_INTERFACE:${LIBRARY_DIR}/VulkanSDK/include/vma>
-)
-
-# end Vulkan

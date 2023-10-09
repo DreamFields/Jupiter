@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 #include "runtime/engine.h"
 #include "editor/include/editor.h"

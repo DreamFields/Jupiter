@@ -1,6 +1,7 @@
 #pragma once
 
 #include <GLFW/glfw3.h>
+#include <array>
 
 namespace Mercury
 {
@@ -21,6 +22,8 @@ namespace Mercury
         void pollEvents() const { glfwPollEvents(); };
         bool shouldClose() const { return glfwWindowShouldClose(m_window); };
         void setTitle(const char* title) { glfwSetWindowTitle(m_window, title); };
+        GLFWwindow* WindowSystem::getWindow() const { return m_window; }
+        std::array<int, 2> WindowSystem::getWindowSize() const { return std::array<int, 2>({m_width, m_height}); }
     private:
         GLFWwindow* m_window{ nullptr };
         int m_width{ 0 };
