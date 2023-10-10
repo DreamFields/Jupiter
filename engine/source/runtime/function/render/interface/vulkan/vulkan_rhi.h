@@ -2,6 +2,7 @@
 
 #include "runtime/function/render/interface/rhi.h"
 #include "runtime/function/render/interface/rhi_struct.h"
+#include "runtime/function/render/interface/vulkan/vulkan_rhi_resource.h"
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
@@ -22,11 +23,19 @@ namespace Mercury
         void createSwapchainImageViews() override;
         void createFramebufferImageAndView() override;
 
+        // destroy
+        void destroyDevice() override;
+
     public:
         GLFWwindow* m_window{ nullptr };
         RHIViewport m_viewport;
         VkSurfaceKHR  m_surface{ nullptr };
         VkPhysicalDevice  m_physical_device{ nullptr };
+        QueueFamilyIndices m_queue_indices;
+        VkDevice m_logical_device{ nullptr };
+        RHIQueue* m_graphics_queue{ nullptr }; // 基类指针
+        VkQueue m_present_queue{ nullptr };
+        RHIQueue* m_compute_queue{ nullptr };
 
     private:
         bool m_enable_validation_layers{ true };

@@ -275,6 +275,7 @@ namespace Mercury
         {
             return false;
         }
+        m_queue_indices = queue_indices;
 
         return true;
     }
@@ -367,8 +368,71 @@ namespace Mercury
 
     }
 
+    // 创建逻辑设备与准备队列，从而抽象物理设备为一些接口
     void VulkanRHI::createLogicalDevice()
     {
+        // 指定要创建的队列
+        std::vector<VkDeviceQueueCreateInfo> queue_create_infos; // all queues that need to be created
+        float queue_priority = 1.0f;
+        std::set<uint32_t> queue_families = { m_queue_indices.graphics_family.value(), // m_queue_indices在isDeviceSuitable()中获得
+                m_queue_indices.present_family.value(),
+                m_queue_indices.m_compute_family.value() };
+        for (uint32_t queue_family : queue_families) { // for every queue family
+            // queue create info
+            VkDeviceQueueCreateInfo queue_create_info{};
+            queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queue_create_info.queueFamilyIndex = queue_family;
+            queue_create_info.queueCount = 1;
+            // 分配优先级以影响命令缓冲执行的调度。就算只有一个队列，这个优先级也是必需的
+            queue_create_info.pQueuePriorities = &queue_priority;
+            queue_create_infos.push_back(queue_create_info);
+        }
+
+        // 指定使用的设备功能:https://registry.khronos.org/vulkan/specs/1.3-extensions/html/chap47.html#VkPhysicalDeviceFeatures
+        VkPhysicalDeviceFeatures physical_device_features = {};
+        physical_device_features.samplerAnisotropy = VK_TRUE; // 指定是否支持各向异性过滤
+        physical_device_features.fragmentStoresAndAtomics = VK_TRUE;  // 指定存储缓冲区和图像是否支持片段着色器阶段中的存储和原子操作。      
+        physical_device_features.independentBlend = VK_TRUE; // 指定是否对每个附件独立地控制 VkPipelineColorBlendAttachmentState 设置。
+
+        // 创建逻辑设备
+        VkDeviceCreateInfo device_create_info{};
+        device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        device_create_info.pQueueCreateInfos = queue_create_infos.data(); // 指针
+        device_create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
+        device_create_info.pEnabledFeatures = &physical_device_features;
+        device_create_info.enabledExtensionCount = static_cast<uint32_t>(m_device_extensions.size());
+        device_create_info.ppEnabledExtensionNames = m_device_extensions.data();
+        if (m_enable_validation_layers) {
+            device_create_info.enabledLayerCount = static_cast<uint32_t>(m_validation_layers.size());
+            device_create_info.ppEnabledLayerNames = m_validation_layers.data();
+        }
+        else {
+            device_create_info.enabledLayerCount = 0;
+        }
+
+        if (vkCreateDevice(m_physical_device, &device_create_info, nullptr, &m_logical_device) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create logical device!");
+        }
+
+        // 队列与逻辑设备一起自动创建，但没有句柄来与它们接口。首先添加一个类成员来存储图形队列的句柄
+        VkQueue vk_graphics_queue;
+        vkGetDeviceQueue(m_logical_device, m_queue_indices.graphics_family.value(), 0, &vk_graphics_queue);
+        m_graphics_queue = new VulkanQueue(); // 指向子类对象
+        ((VulkanQueue*)m_graphics_queue)->setResource(vk_graphics_queue);
+
+
+        vkGetDeviceQueue(m_logical_device, m_queue_indices.present_family.value(), 0, &m_present_queue);
+
+        VkQueue vk_compute_queue;
+        vkGetDeviceQueue(m_logical_device, m_queue_indices.graphics_family.value(), 0, &vk_compute_queue);
+        m_compute_queue = new VulkanQueue(); // 指向子类对象
+        ((VulkanQueue*)m_compute_queue)->setResource(vk_compute_queue);
+
+        // todo more efficient pointer
+
+        // todo m_depth_image_format
+
+        std::cout << "create logical device success!" << std::endl;
     }
 
     void VulkanRHI::createCommandPool()
@@ -412,5 +476,9 @@ namespace Mercury
 #endif
 
         return extensions;
+        }
+
+    void VulkanRHI::destroyDevice() {
+        vkDestroyDevice(m_logical_device, nullptr);
     }
-} // namespace Mercury
+    } // namespace Mercury

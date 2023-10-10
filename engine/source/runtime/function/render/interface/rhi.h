@@ -28,6 +28,9 @@ namespace Mercury
         virtual void createSwapchainImageViews() = 0;
         virtual void createFramebufferImageAndView() = 0;
         virtual void createCommandPool() = 0;
+
+        // destroy
+        virtual void destroyDevice() = 0;
     };
 
 } // namespace Mercury

@@ -6,6 +6,11 @@
 #include <vector>
 namespace Mercury
 {
+    ///////////////////////class/////////////////
+    class RHIQueue {};
+
+
+    //////////////////////struct/////////////////
     struct RHIViewport
     {
         float x;
