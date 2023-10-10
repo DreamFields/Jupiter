@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <set>
 
 namespace Mercury
 {
@@ -186,8 +187,184 @@ namespace Mercury
         }
     }
 
+    // 选择物理设备，并进行一些兼容性检查
     void VulkanRHI::initializePhysicalDevice()
     {
+        {
+            uint32_t physical_device_count;
+            vkEnumeratePhysicalDevices(m_instance, &physical_device_count, nullptr);
+            if (physical_device_count == 0)
+            {
+                std::runtime_error("failed to find GPUs with Vulkan support!");
+            }
+            else
+            {
+                std::cout << "find " << physical_device_count << " physical device!" << std::endl;
+                // find one device that matches our requirement
+                // or find which is the best
+                // 现在可以分配一个数组来保存所有 VkPhysicalDevice 句柄
+                std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
+                vkEnumeratePhysicalDevices(m_instance, &physical_device_count, physical_devices.data());
+
+                std::vector<std::pair<int, VkPhysicalDevice>> ranked_physical_devices;
+                for (const auto& device : physical_devices)
+                {
+                    VkPhysicalDeviceProperties physical_device_properties;
+                    vkGetPhysicalDeviceProperties(device, &physical_device_properties);
+                    int score = 0;
+
+                    if (physical_device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+                    {
+                        score += 1000; // 独显+1000
+                    }
+                    else if (physical_device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+                    {
+                        score += 100; // 集显+100
+                    }
+
+                    ranked_physical_devices.push_back({ score, device });
+                }
+                // 根据得分排序
+                std::sort(ranked_physical_devices.begin(),
+                    ranked_physical_devices.end(),
+                    [](const std::pair<int, VkPhysicalDevice>& p1, const std::pair<int, VkPhysicalDevice>& p2) {
+                        return p1 > p2;
+                    });
+
+                for (const auto& device : ranked_physical_devices)
+                {
+                    if (isDeviceSuitable(device.second))
+                    {
+                        m_physical_device = device.second;
+                        break;
+                    }
+                }
+
+                if (m_physical_device == VK_NULL_HANDLE)
+                {
+                    std::runtime_error("failed to find suitable physical device");
+                }
+
+                std::cout << "m_physical_device: " << m_physical_device << std::endl;
+            }
+        }
+
+
+    }
+
+    // 检查该物理设备是否适合：1.所需队列家族是否存在;2.交换链与物理设备设备的兼容性检查
+    bool VulkanRHI::isDeviceSuitable(VkPhysicalDevice physical_device) {
+        // 所需队列家族是否存在
+        auto queue_indices = findQueueFamilies(physical_device);
+
+        // 交换链与物理设备设备的兼容性检查
+        bool is_extensions_supported = checkDeviceExtensionSupport(physical_device);
+        bool is_swapchain_adequate = false;
+        if (is_extensions_supported)
+        {
+            // 仅仅检查交换链是否可用是不够的，需要与窗口表面兼容等，因此需要查询更多的详细信息
+            SwapChainSupportDetails swapchain_support_details = querySwapChainSupport(physical_device);
+            is_swapchain_adequate =
+                !swapchain_support_details.formats.empty() && !swapchain_support_details.presentModes.empty();
+        }
+
+        VkPhysicalDeviceFeatures physicalm_device_features;
+        vkGetPhysicalDeviceFeatures(physical_device, &physicalm_device_features);
+
+        if (!queue_indices.isComplete() || !is_swapchain_adequate || !physicalm_device_features.samplerAnisotropy)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    // 查找队列家族是否支持
+    Mercury::QueueFamilyIndices VulkanRHI::findQueueFamilies(VkPhysicalDevice physical_device) {
+        // Logic to find graphics queue family
+        QueueFamilyIndices indices;
+        uint32_t queue_family_count = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
+        std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.data());
+
+        int i = 0;
+        for (const auto& queue_family : queue_families)
+        {
+            if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) // if support graphics command queue
+            {
+                indices.graphics_family = i;
+            }
+
+            if (queue_family.queueFlags & VK_QUEUE_COMPUTE_BIT) // if support compute command queue
+            {
+                indices.m_compute_family = i;
+            }
+
+
+            VkBool32 is_present_support = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(physical_device,
+                i,
+                m_surface,
+                &is_present_support); // if support surface presentation
+            if (is_present_support)
+            {
+                indices.present_family = i;
+            }
+
+            // 各个需要的队列家族都拥有对应索引后退出
+            if (indices.isComplete())
+            {
+                break;
+            }
+            i++;
+        }
+        return indices;
+    }
+
+
+    // 检查物理设备是否支持需要的插件
+    bool VulkanRHI::checkDeviceExtensionSupport(VkPhysicalDevice physical_device) {
+        uint32_t extension_count;
+        vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, nullptr);
+
+        std::vector<VkExtensionProperties> available_extensions(extension_count);
+        vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, available_extensions.data());
+
+        // 检查所需要的插件是否都在available_extensions中
+        std::set<std::string> required_extensions(m_device_extensions.begin(), m_device_extensions.end());
+        for (const auto& extension : available_extensions)
+        {
+            required_extensions.erase(extension.extensionName);
+        }
+
+        return required_extensions.empty();
+    }
+
+    Mercury::SwapChainSupportDetails VulkanRHI::querySwapChainSupport(VkPhysicalDevice physical_device) {
+        SwapChainSupportDetails details;
+
+        // capabilities
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, m_surface, &details.capabilities);
+
+        // formats
+        uint32_t formatCount;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, m_surface, &formatCount, nullptr);
+        if (formatCount != 0) {
+            details.formats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, m_surface, &formatCount, details.formats.data());
+        }
+
+        // presentmodes
+        uint32_t presentModeCount;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, m_surface, &presentModeCount, nullptr);
+        if (presentModeCount != 0) {
+            details.presentModes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, m_surface, &presentModeCount, details.presentModes.data());
+        }
+
+        return details;
+
     }
 
     void VulkanRHI::createLogicalDevice()

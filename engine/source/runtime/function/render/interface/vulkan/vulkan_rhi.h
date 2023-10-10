@@ -26,6 +26,7 @@ namespace Mercury
         GLFWwindow* m_window{ nullptr };
         RHIViewport m_viewport;
         VkSurfaceKHR  m_surface{ nullptr };
+        VkPhysicalDevice  m_physical_device{ nullptr };
 
     private:
         bool m_enable_validation_layers{ true };
@@ -49,10 +50,16 @@ namespace Mercury
         void createSyncPrimitives();
         void createAssetAllocator();
         std::vector<const char*> getRequiredExtensions();
+        bool isDeviceSuitable(VkPhysicalDevice physical_device);
+        QueueFamilyIndices VulkanRHI::findQueueFamilies(VkPhysicalDevice physical_device);
+        bool checkDeviceExtensionSupport(VkPhysicalDevice physical_device);
+        SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice physical_device);
+
 
     private:
         VkInstance m_instance{ nullptr };
         uint32_t m_vulkan_api_version{ VK_API_VERSION_1_0 };
+        std::vector<char const*> m_device_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
         const std::vector<char const*> m_validation_layers{ "VK_LAYER_KHRONOS_validation" };
 
     };
