@@ -52,6 +52,7 @@ namespace Mercury
 
         // 创建交换链（https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain）
         // 交换链是渲染目标的集合。它的基本目的是确保我们当前渲染的图像与屏幕上的图像不同。
+        // 交换链本质上是一个等待显示到屏幕上的图像队列
         createSwapchain();
 
         // 创建一个VkImageView对象，是对图像的一个视图
@@ -68,7 +69,131 @@ namespace Mercury
 
     void VulkanRHI::createSwapchain()
     {
+        // query all support of this physical device
+        SwapChainSupportDetails swapchain_support_detail = querySwapChainSupport(m_physical_device);
+
+        // choose the best or fitting format
+        VkSurfaceFormatKHR chosen_surface_format = chooseSwapChainSurfaceFormatFromDetails(swapchain_support_detail.formats);
+        // choose the best or fitting present mode
+        VkPresentModeKHR chosen_present_mode = chooseSwapchainPresentModeFromDetails(swapchain_support_detail.presentModes);
+        // choose the best or fitting extent
+        VkExtent2D chosen_extent = chooseSwapchainExtentFromDetails(swapchain_support_detail.capabilities);
+
+        // ------------create swap chain----------
+        // https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain#page_Creating-the-swap-chain
+        // 决定在交换链中希望有多少图像
+        uint32_t image_count = swapchain_support_detail.capabilities.minImageCount + 1;
+        if (swapchain_support_detail.capabilities.maxImageCount > 0 &&
+            image_count > swapchain_support_detail.capabilities.maxImageCount) {
+            image_count = swapchain_support_detail.capabilities.maxImageCount;
+        }
+
+        VkSwapchainCreateInfoKHR create_info{};
+        create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        create_info.surface = m_surface;
+        // 指定交换链图像的详细信息
+        create_info.minImageCount = image_count;
+        create_info.imageFormat = chosen_surface_format.format;
+        create_info.imageColorSpace = chosen_surface_format.colorSpace;
+        create_info.imageExtent = chosen_extent;
+        create_info.imageArrayLayers = 1;
+        create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+        // 指定如何处理将在多个队列族中使用的交换链图像
+        uint32_t queue_families_indices[] = { m_queue_indices.graphics_family.value(),m_queue_indices.present_family.value() };
+        if (m_queue_indices.graphics_family != m_queue_indices.present_family) {
+            create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT; // 一个图片一次由一个队列族所有，在将其用于其他队列族之前，必须明确转移所有权
+            create_info.queueFamilyIndexCount = 2;
+            create_info.pQueueFamilyIndices = queue_families_indices;
+        }
+        else {
+            create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // 图像可以跨多个队列族使用，而无需明确的所有权转移。
+            create_info.queueFamilyIndexCount = 0;
+            create_info.pQueueFamilyIndices = nullptr;
+        }
+        // 指定一个特定的转换应该应用到交换链中的图像(如果支持的话)
+        create_info.preTransform = swapchain_support_detail.capabilities.currentTransform;
+        // 如果存在图像的 alpha 组件，则在合成过程中忽略它。取而代之的是，将图像视为常量 alpha 为1.0。
+        create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        // 默认垂直同步
+        create_info.presentMode = chosen_present_mode;
+        // 启用裁剪
+        create_info.clipped = VK_TRUE;
+        // 目前假设只创建一个交换链
+        create_info.oldSwapchain = VK_NULL_HANDLE;
+
+        if (vkCreateSwapchainKHR(m_logical_device, &create_info, nullptr, &m_swapchain) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create swapchain khr!");
+        }
+
+        // ----------检索交换链图像---------
+        // 首先用vkGetSwapchainImagesKHR查询最终数量的图像，然后调整容器的大小，最后再次调用它来检索句柄。
+        vkGetSwapchainImagesKHR(m_logical_device, m_swapchain, &image_count, nullptr);
+        m_swapchain_images.resize(image_count);
+        vkGetSwapchainImagesKHR(m_logical_device, m_swapchain, &image_count, m_swapchain_images.data());
+        // 在成员变量中存储我们为交换链图像选择的格式和范围
+        m_swapchain_images_format = (RHIFormat)chosen_surface_format.format;
+        m_swapchain_extend.height = chosen_extent.height;
+        m_swapchain_extend.width = chosen_extent.width;
+
+        std::cout << "create swapchain success!" << std::endl;
+
+        // todo m_scissor
+
+
     }
+
+    // 指定颜色通道和类型
+    VkSurfaceFormatKHR VulkanRHI::chooseSwapChainSurfaceFormatFromDetails(const std::vector<VkSurfaceFormatKHR>& available_surface_formats) {
+        for (const auto& surface_format : available_surface_formats)
+        {
+            // todo: select the VK_FORMAT_B8G8R8A8_SRGB surface format,
+            // todo: there is no need to do gamma correction in the fragment shader
+            if (surface_format.format == VK_FORMAT_B8G8R8A8_UNORM && // RGBA 32位无符号标准化格式
+                surface_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) { // 指定对 sRGB 颜色空间的支持
+                return surface_format;
+            }
+        }
+        return available_surface_formats[0];
+
+    }
+
+    // 显示模式可以说是交换链中最重要的设置，因为它代表了向屏幕显示图像的实际条件。
+    // https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain#page_Surface-format
+    VkPresentModeKHR VulkanRHI::chooseSwapchainPresentModeFromDetails(const std::vector<VkPresentModeKHR>& available_present_modes) {
+        for (VkPresentModeKHR present_mode : available_present_modes) {
+            if (VK_PRESENT_MODE_MAILBOX_KHR == present_mode) {
+                return VK_PRESENT_MODE_MAILBOX_KHR; // 垂直同步，交换链是一个队列，当显示器刷新时，显示器从队列前端获取一幅图像，程序在队列后端插入渲染后的图像。如果队列已满，那么程序必须等待。
+            }
+
+        }
+        //三重缓冲：当队列已满时，不会阻塞应用程序，而是简单地用新的映像替换已经排队的映像。这种模式可以用来尽可能快地呈现帧，同时还可以避免撕裂，从而比标准的垂直同步减少延迟问题。
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+
+    // 交换范围是交换链图像的分辨率，它几乎总是完全等于我们正在绘制的窗口的分辨率(以像素为单位)。可能的分辨率范围在 VkSurfaceCapabilitiesKHR 结构中定义
+    // https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain#page_Swap-extent
+    VkExtent2D VulkanRHI::chooseSwapchainExtentFromDetails(const VkSurfaceCapabilitiesKHR& capabilities) {
+        if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+            return capabilities.currentExtent;
+        }
+        else {
+            int width, height;
+            // 必须使用glfwGetFramebufferSize以像素为单位查询窗口的分辨率，然后将其与最小和最大图像范围进行匹配
+            glfwGetFramebufferSize(m_window, &width, &height);
+
+            VkExtent2D actualExtent = {
+                static_cast<uint32_t>(width),
+                static_cast<uint32_t>(height)
+            };
+
+            actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+            actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+            return actualExtent;
+        }
+    }
+
 
     void VulkanRHI::createSwapchainImageViews()
     {
@@ -471,14 +596,14 @@ namespace Mercury
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
 
-#if defined(__MACH__)
+#if defined(__MACH__) // defined by implementations targeting Apple unix operating systems (OSX, iOS, and Darwin)
         extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 #endif
 
         return extensions;
-        }
+    }
 
     void VulkanRHI::destroyDevice() {
         vkDestroyDevice(m_logical_device, nullptr);
     }
-    } // namespace Mercury
+} // namespace Mercury
