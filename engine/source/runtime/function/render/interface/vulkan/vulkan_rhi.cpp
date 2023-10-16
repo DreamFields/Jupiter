@@ -55,7 +55,8 @@ namespace Mercury
         // 交换链本质上是一个等待显示到屏幕上的图像队列
         createSwapchain();
 
-        // 创建一个VkImageView对象，是对图像的一个视图
+        // 创建一个VkImageView对象，是对图像的一个视图，用于呈现渲染管线中的任何图像（包括swapchain中的）
+        // https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Image_views
         createSwapchainImageViews();
 
         // 为交换链中的所有图像创建一个帧缓冲区
@@ -197,6 +198,28 @@ namespace Mercury
 
     void VulkanRHI::createSwapchainImageViews()
     {
+        m_swapchain_imageviews.resize(m_swapchain_images.size());
+
+        // create imageview (one for each this time) for all swapchain images
+        for (size_t i = 0; i < m_swapchain_images.size(); i++)
+        {
+            VkImageView vk_image_view;
+            vk_image_view = VulkanUtil::createImageView(m_logical_device,
+                m_swapchain_images[i],
+                (VkFormat)m_swapchain_images_format,
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                VK_IMAGE_VIEW_TYPE_2D,
+                1,
+                1
+            );
+
+            m_swapchain_imageviews[i] = new VulkanImageView();
+            ((VulkanImageView*)m_swapchain_imageviews[i])->setResource(vk_image_view);
+
+        }
+
+        std::cout << "createSwapchainImageViews success!" << std::endl;
+
     }
 
     void VulkanRHI::createFramebufferImageAndView()
@@ -605,5 +628,10 @@ namespace Mercury
 
     void VulkanRHI::destroyDevice() {
         vkDestroyDevice(m_logical_device, nullptr);
+    }
+
+    void VulkanRHI::destroyImageView(RHIImageView* imageView)
+    {
+        vkDestroyImageView(m_logical_device, ((VulkanImageView*)imageView)->getResource(), nullptr);
     }
 } // namespace Mercury

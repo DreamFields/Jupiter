@@ -8,6 +8,7 @@ namespace Mercury
 {
     ///////////////////////class/////////////////
     class RHIQueue {};
+    class RHIImageView {};
 
 
     //////////////////////struct/////////////////

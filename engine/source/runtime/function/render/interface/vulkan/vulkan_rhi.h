@@ -4,6 +4,7 @@
 #include "runtime/function/render/interface/rhi_struct.h"
 #include "runtime/function/render/interface/vulkan/vulkan_rhi_resource.h"
 #include "runtime/function/render/render_type.h"
+#include "runtime/function/render/interface/vulkan/vulkan_util.h"
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
@@ -26,6 +27,7 @@ namespace Mercury
 
         // destroy
         void destroyDevice() override;
+        void destroyImageView(RHIImageView* imageView);
 
     public:
         GLFWwindow* m_window{ nullptr };
@@ -41,6 +43,7 @@ namespace Mercury
         std::vector<VkImage> m_swapchain_images;
         RHIFormat m_swapchain_images_format{ RHI_FORMAT_UNDEFINED };
         RHIExtent2D m_swapchain_extend;
+        std::vector<RHIImageView*> m_swapchain_imageviews;
 
 
     private:

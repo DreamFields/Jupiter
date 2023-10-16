@@ -1,8 +1,3 @@
-/*
- * @Author: Meng Tian
- * @Date: 2023-10-07 16:39:36
- * @Descripttion: Do not edit
- */
 #pragma once
 
 #define GLFW_INCLUDE_VULKAN
