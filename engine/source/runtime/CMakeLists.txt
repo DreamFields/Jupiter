@@ -27,6 +27,7 @@ target_include_directories(
     ${TARGET_NAME}
     PUBLIC $<BUILD_INTERFACE:${LIBRARY_DIR}/VulkanSDK/include/vma>
 )
+
 # end Vulkan
 
 # 将目录包含到对应目标里，不写这句话可就找不到.h文件了
@@ -42,3 +43,12 @@ target_include_directories(
     $<INSTALL_INTERFACE:include/${TARGET_NAME}-${PROJECT_VERSION}>
 )
 
+# shader 显式要求cmake先编译${SHADER_COMPILE_TARGET}
+add_dependencies(${TARGET_NAME} ${SHADER_COMPILE_TARGET}) 
+target_include_directories(
+    ${TARGET_NAME}
+    PUBLIC $<BUILD_INTERFACE:${ENGINE_ROOT_DIR}/shader/generated/cpp>)
+
+# 将该模块保存到Engine目录下
+set_target_properties(${TARGET_NAME} PROPERTIES CXX_STANDARD 17)
+set_target_properties(${TARGET_NAME} PROPERTIES FOLDER "Engine")

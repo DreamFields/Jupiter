@@ -13,3 +13,7 @@ add_executable(${TARGET_NAME} ${EDITOR_HEADERS} ${EDITOR_SOURCES} ${EDITOR_RESOU
 
 # Runtime已经作为静态库被构建了，所以要链接过来
 target_link_libraries(${TARGET_NAME} MercuryRuntime)
+
+# 将该模块保存到Engine目录下
+set_target_properties(${TARGET_NAME} PROPERTIES CXX_STANDARD 17 OUTPUT_NAME "MercuryEditor")
+set_target_properties(${TARGET_NAME} PROPERTIES FOLDER "Engine")
