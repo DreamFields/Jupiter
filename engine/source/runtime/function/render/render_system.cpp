@@ -12,5 +12,11 @@ namespace Mercury
         m_rhi = std::make_shared<VulkanRHI>();
         m_rhi->initialize(rhi_init_info);
     }
+    std::shared_ptr<RHI> RenderSystem::getRHI() const
+    {
+        return m_rhi;
+    }
+
 } // namespace Mercury
+
 

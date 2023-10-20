@@ -23,6 +23,8 @@ namespace Mercury
         virtual void createSwapchainImageViews() = 0;
         virtual void createFramebufferImageAndView() = 0;
         virtual void createCommandPool() = 0;
+        virtual RHIShader* createShaderModule(const std::vector<unsigned char>& shader_code) = 0;
+
 
         // destroy
         virtual void destroyDevice() = 0;

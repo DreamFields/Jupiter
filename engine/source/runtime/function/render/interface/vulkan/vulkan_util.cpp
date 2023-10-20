@@ -39,5 +39,21 @@ namespace Mercury
         }
         return image_view;
     }
+
+    // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Shader_modules#page_Creating-shader-modules
+    VkShaderModule VulkanUtil::createShaderModule(VkDevice device, const std::vector<unsigned char>& shader_code) {
+        VkShaderModuleCreateInfo shader_module_create_info{};
+        shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        shader_module_create_info.codeSize = shader_code.size();
+        // spv字节码文件的大小是以字节为单位指定的，其指针是 uint32_t 指针而不是 char 指针。因此，我们需要使用reinterpret_cast强制转换指针
+        shader_module_create_info.pCode = reinterpret_cast<const uint32_t*>(shader_code.data());
+
+        VkShaderModule shader_module;
+        if (vkCreateShaderModule(device, &shader_module_create_info, nullptr, &shader_module) != VK_SUCCESS) {
+            return VK_NULL_HANDLE;
+        }
+        return shader_module;
+    }
+
 } // namespace Mercury
 

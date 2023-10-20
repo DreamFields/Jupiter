@@ -1,7 +1,7 @@
 #pragma once
+#include "runtime/function/render/render_type.h"
 
 #include <vulkan/vulkan_core.h>
-
 #include <optional>
 #include <vector>
 namespace Mercury
@@ -9,6 +9,7 @@ namespace Mercury
     ///////////////////////class/////////////////
     class RHIQueue {};
     class RHIImageView {};
+    class RHIShader {};
 
 
     //////////////////////struct/////////////////
@@ -45,5 +46,32 @@ namespace Mercury
         uint32_t width;
         uint32_t height;
     };
+
+    struct RHISpecializationMapEntry {
+        uint32_t constantID;
+        uint32_t offset;
+        size_t size;
+    };
+
+    struct RHISpecializationInfo
+    {
+        uint32_t mapEntryCount;
+        const RHISpecializationMapEntry** pMapEntries;
+        size_t dataSize;
+        const void* pData;
+    };
+
+    struct RHIPipelineShaderStageCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineShaderStageCreateFlags flags;
+        RHIShaderStageFlagBits stage;
+        RHIShader* module;
+        const char* pName;
+        const RHISpecializationInfo* pSpecializationInfo;
+    };
+
+    
 } // namespace Mercury
 

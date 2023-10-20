@@ -16,6 +16,10 @@ namespace Mercury
         RenderSystemInitInfo render_init_info;
         render_init_info.window_system = m_window_system;
         m_render_system->initialize(render_init_info);
+
+        // 初始化debug绘制
+        m_debugdraw_manager = std::make_shared<DebugDrawManager>();
+        m_debugdraw_manager->initialize();
     }
 
     void RuntimeGlobalContext::shutdownSystems() {}

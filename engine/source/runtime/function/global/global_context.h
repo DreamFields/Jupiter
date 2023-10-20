@@ -5,6 +5,7 @@
 
 #include "runtime/function/render/window_system.h"
 #include "runtime/function/render/render_system.h"
+#include "runtime/function/render/debugdraw/debug_draw_manager.h"
 
 namespace Mercury
 {
@@ -20,6 +21,7 @@ namespace Mercury
     public:
         std::shared_ptr<WindowSystem> m_window_system;
         std::shared_ptr<RenderSystem> m_render_system;
+        std::shared_ptr<DebugDrawManager> m_debugdraw_manager ;
     };
 
     extern RuntimeGlobalContext g_runtime_global_context;

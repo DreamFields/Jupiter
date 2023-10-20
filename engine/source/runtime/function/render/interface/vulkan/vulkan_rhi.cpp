@@ -603,7 +603,16 @@ namespace Mercury
     {
     }
 
+    RHIShader* VulkanRHI::createShaderModule(const std::vector<unsigned char>& shader_code)
+    {
+        RHIShader* shahder = new VulkanShader();
 
+        VkShaderModule vk_shader = VulkanUtil::createShaderModule(m_logical_device, shader_code);
+
+        ((VulkanShader*)shahder)->setResource(vk_shader);
+
+        return shahder;
+    }
 
 
     std::vector<const char*> VulkanRHI::getRequiredExtensions()

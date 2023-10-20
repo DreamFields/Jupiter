@@ -36,4 +36,19 @@ namespace Mercury
     private:
         VkImageView m_resource;
     };
+
+    class VulkanShader : public RHIShader
+    {
+    public:
+        void setResource(VkShaderModule res)
+        {
+            m_resource = res;
+        }
+        VkShaderModule getResource() const
+        {
+            return m_resource;
+        }
+    private:
+        VkShaderModule m_resource;
+    };
 } // namespace Mercury

@@ -9,13 +9,13 @@ namespace Mercury
     struct RenderSystemInitInfo
     {
         std::shared_ptr<WindowSystem> window_system;
-        // todo DebugDrawMagager
+        std::shared_ptr<DebugDrawManager> debugdraw_manager;
     };
 
     class RenderSystem {
     public:
         void initialize(RenderSystemInitInfo init_info);
-
+        std::shared_ptr<RHI> getRHI() const;
     private:
         std::shared_ptr<RHI> m_rhi;
     };

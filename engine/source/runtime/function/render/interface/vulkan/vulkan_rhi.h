@@ -24,6 +24,8 @@ namespace Mercury
         void createSwapchain() override;
         void createSwapchainImageViews() override;
         void createFramebufferImageAndView() override;
+        RHIShader* createShaderModule(const std::vector<unsigned char>& shader_code) override;
+
 
         // destroy
         void destroyDevice() override;
