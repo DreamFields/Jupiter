@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <set>
+#include "vulkan_rhi.h"
 
 namespace Mercury
 {
@@ -614,6 +615,41 @@ namespace Mercury
         return shahder;
     }
 
+    bool VulkanRHI::createPipelineLayout(const RHIPipelineLayoutCreateInfo* pCreateInfo, RHIPipelineLayout*& pPipelineLayout)
+    {
+        //todo descriptor_set_layout
+        // int descriptor_set_layout_size = pCreateInfo->setLayoutCount;
+        // std::vector<VkDescriptorSetLayout> vk_descriptor_set_layout_list(descriptor_set_layout_size);
+        // for (int i = 0; i < descriptor_set_layout_size; ++i)
+        // {
+        //     const auto& rhi_descriptor_set_layout_element = pCreateInfo->pSetLayouts[i];
+        //     auto& vk_descriptor_set_layout_element = vk_descriptor_set_layout_list[i];
+        //     vk_descriptor_set_layout_element = ((VulkanDescriptorSetLayout*)rhi_descriptor_set_layout_element)->getResource();
+        // }
+
+        VkPipelineLayoutCreateInfo create_info{};
+        create_info.sType = (VkStructureType)pCreateInfo->sType;
+        create_info.pNext = (const void*)pCreateInfo->pNext;
+        create_info.flags = (VkPipelineLayoutCreateFlags)pCreateInfo->flags;
+        create_info.setLayoutCount = pCreateInfo->setLayoutCount; // Optional
+        create_info.pSetLayouts = nullptr; // Optional
+        // create_info.pushConstantRangeCount = 0; // Optional
+        // create_info.pPushConstantRanges = nullptr; // Optional
+
+        // pPipelineLayout是引用，本身是RHIPipelineLayout类型的指针
+        pPipelineLayout = new VulkanPipelineLayout();
+        VkPipelineLayout vk_pipeline_layout;
+        if (vkCreatePipelineLayout(m_logical_device, &create_info, nullptr, &vk_pipeline_layout) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create pipeline layout!");
+            return false;
+        }
+        else {
+            ((VulkanPipelineLayout*)pPipelineLayout)->setResource(vk_pipeline_layout);
+            std::cout << "createPipelineLayout success!" << std::endl;
+            return RHI_SUCCESS;
+        }
+    }
+
 
     std::vector<const char*> VulkanRHI::getRequiredExtensions()
     {
@@ -643,4 +679,11 @@ namespace Mercury
     {
         vkDestroyImageView(m_logical_device, ((VulkanImageView*)imageView)->getResource(), nullptr);
     }
+
+    void Mercury::VulkanRHI::destroyShaderModule(RHIShader* shaderModule)
+    {
+        vkDestroyShaderModule(m_logical_device, ((VulkanShader*)shaderModule)->getResource(), nullptr);
+        delete(shaderModule);
+    }
 } // namespace Mercury
+

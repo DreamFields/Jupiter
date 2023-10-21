@@ -9,8 +9,10 @@ namespace Mercury
     ///////////////////////class/////////////////
     class RHIQueue {};
     class RHIImageView {};
+    class RHIDescriptorSetLayout {};
     class RHIShader {};
-
+    class RHIPipeline {};
+    class RHIPipelineLayout {};
 
     //////////////////////struct/////////////////
     struct RHIViewport
@@ -42,9 +44,32 @@ namespace Mercury
         std::vector<VkPresentModeKHR>   presentModes; // 表面支持的表达模式
     };
 
+    struct RHIOffset2D {
+        int32_t x;
+        int32_t y;
+    };
+
     struct RHIExtent2D {
         uint32_t width;
         uint32_t height;
+    };
+
+    struct RHIPushConstantRange
+    {
+        RHIShaderStageFlags stageFlags;
+        uint32_t offset;
+        uint32_t size;
+    };
+
+    struct RHIPipelineLayoutCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineLayoutCreateFlags flags;
+        uint32_t setLayoutCount;
+        RHIDescriptorSetLayout* const* pSetLayouts; // 指针的指针
+        uint32_t pushConstantRangeCount;
+        const RHIPushConstantRange* pPushConstantRanges;
     };
 
     struct RHISpecializationMapEntry {
@@ -72,6 +97,142 @@ namespace Mercury
         const RHISpecializationInfo* pSpecializationInfo;
     };
 
-    
+    struct RHIVertexInputBindingDescription
+    {
+        uint32_t binding;
+        uint32_t stride;
+        RHIVertexInputRate inputRate;
+    };
+
+    struct RHIVertexInputAttributeDescription
+    {
+        uint32_t location;
+        uint32_t binding;
+        RHIFormat format;
+        uint32_t offset;
+    };
+
+    struct RHIPipelineVertexInputStateCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineVertexInputStateCreateFlags flags;
+        uint32_t vertexBindingDescriptionCount;
+        const RHIVertexInputBindingDescription* pVertexBindingDescriptions;
+        uint32_t vertexAttributeDescriptionCount;
+        const RHIVertexInputAttributeDescription* pVertexAttributeDescriptions;
+    };
+
+    struct RHIPipelineInputAssemblyStateCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineInputAssemblyStateCreateFlags flags;
+        RHIPrimitiveTopology topology;
+        RHIBool32 primitiveRestartEnable;
+    };
+
+    struct RHIRect2D
+    {
+        RHIOffset2D offset;
+        RHIExtent2D extent;
+    };
+
+    struct RHIPipelineViewportStateCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineViewportStateCreateFlags flags;
+        uint32_t viewportCount;
+        const RHIViewport* pViewports;
+        uint32_t scissorCount;
+        const RHIRect2D* pScissors;
+    };
+
+    struct RHIPipelineRasterizationStateCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineRasterizationStateCreateFlags flags;
+        RHIBool32 depthClampEnable;
+        RHIBool32 rasterizerDiscardEnable;
+        RHIPolygonMode polygonMode;
+        RHICullModeFlags cullMode;
+        RHIFrontFace frontFace;
+        RHIBool32 depthBiasEnable;
+        float depthBiasConstantFactor;
+        float depthBiasClamp;
+        float depthBiasSlopeFactor;
+        float lineWidth;
+    };
+
+    struct RHIPipelineMultisampleStateCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineMultisampleStateCreateFlags flags;
+        RHISampleCountFlagBits rasterizationSamples;
+        RHIBool32 sampleShadingEnable;
+        float minSampleShading;
+        const RHISampleMask** pSampleMask;
+        RHIBool32 alphaToCoverageEnable;
+        RHIBool32 alphaToOneEnable;
+    };
+
+    struct RHIPipelineColorBlendAttachmentState
+    {
+        RHIBool32 blendEnable;
+        RHIBlendFactor srcColorBlendFactor;
+        RHIBlendFactor dstColorBlendFactor;
+        RHIBlendOp colorBlendOp;
+        RHIBlendFactor srcAlphaBlendFactor;
+        RHIBlendFactor dstAlphaBlendFactor;
+        RHIBlendOp alphaBlendOp;
+        RHIColorComponentFlags colorWriteMask;
+    };
+
+    struct RHIPipelineColorBlendStateCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineColorBlendStateCreateFlags flags;
+        RHIBool32 logicOpEnable;
+        RHILogicOp logicOp;
+        uint32_t attachmentCount;
+        const RHIPipelineColorBlendAttachmentState* pAttachments;
+        float blendConstants[4];
+    };
+
+    struct RHIPipelineDynamicStateCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineDynamicStateCreateFlags flags;
+        uint32_t dynamicStateCount;
+        const RHIDynamicState* pDynamicStates;
+    };
+
+    struct RHIGraphicsPipelineCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineCreateFlags flags;
+        uint32_t stageCount;
+        const RHIPipelineShaderStageCreateInfo* pStages;
+        const RHIPipelineVertexInputStateCreateInfo* pVertexInputState;
+        const RHIPipelineInputAssemblyStateCreateInfo* pInputAssemblyState;
+        // const RHIPipelineTessellationStateCreateInfo* pTessellationState;
+        const RHIPipelineViewportStateCreateInfo* pViewportState;
+        const RHIPipelineRasterizationStateCreateInfo* pRasterizationState;
+        const RHIPipelineMultisampleStateCreateInfo* pMultisampleState;
+        // const RHIPipelineDepthStencilStateCreateInfo* pDepthStencilState;
+        const RHIPipelineColorBlendStateCreateInfo* pColorBlendState;
+        const RHIPipelineDynamicStateCreateInfo* pDynamicState;
+        RHIPipelineLayout* layout;
+        // RHIRenderPass* renderPass;
+        uint32_t subpass;
+        RHIPipeline* basePipelineHandle;
+        int32_t basePipelineIndex;
+    };
 } // namespace Mercury
 

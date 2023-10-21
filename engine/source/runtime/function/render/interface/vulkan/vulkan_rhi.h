@@ -25,11 +25,14 @@ namespace Mercury
         void createSwapchainImageViews() override;
         void createFramebufferImageAndView() override;
         RHIShader* createShaderModule(const std::vector<unsigned char>& shader_code) override;
+        bool createPipelineLayout(const RHIPipelineLayoutCreateInfo* pCreateInfo, RHIPipelineLayout*& pPipelineLayout) override;
+
 
 
         // destroy
         void destroyDevice() override;
-        void destroyImageView(RHIImageView* imageView);
+        void destroyImageView(RHIImageView* imageView) override;
+        void destroyShaderModule(RHIShader* shaderModule) override;
 
     public:
         GLFWwindow* m_window{ nullptr };

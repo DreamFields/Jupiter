@@ -51,4 +51,28 @@ namespace Mercury
     private:
         VkShaderModule m_resource;
     };
+    class VulkanDescriptorSetLayout :public RHIDescriptorSetLayout
+    {
+    public:
+        void setResource(VkDescriptorSetLayout res) {
+            m_resource = res;
+        }
+        VkDescriptorSetLayout getResource() const {
+            return m_resource;
+        }
+    private:
+        VkDescriptorSetLayout m_resource;
+    };
+    class VulkanPipelineLayout :public RHIPipelineLayout
+    {
+    public:
+        void setResource(VkPipelineLayout res) {
+            m_resource = res;
+        }
+        VkPipelineLayout getResource() const {
+            return m_resource;
+        }
+    private:
+        VkPipelineLayout m_resource;
+    };
 } // namespace Mercury

@@ -4,6 +4,7 @@
 
 #include "runtime/function/render/window_system.h"
 #include "runtime/function/render/interface/rhi.h"
+#include "runtime/function/render/debugdraw/debug_draw_manager.h"
 namespace Mercury
 {
     struct RenderSystemInitInfo

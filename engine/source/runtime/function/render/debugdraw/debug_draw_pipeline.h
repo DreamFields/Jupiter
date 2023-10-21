@@ -17,6 +17,14 @@ namespace Mercury
         _debug_draw_pipeline_type_count,
     };
 
+    // debug draw pipeline的基本结构体
+    struct DebugDrawPipelineBase
+    {
+        RHIPipelineLayout* layout = nullptr;
+        RHIPipeline* pipeline = nullptr;
+    };
+
+
     class DebugDrawPipeline {
     public:
         DebugDrawPipelineType m_pipeline_type;
@@ -25,5 +33,7 @@ namespace Mercury
     private:
         void setupPipelines();
         std::shared_ptr<RHI> m_rhi;
+        RHIDescriptorSetLayout* m_descriptor_layout;
+        std::vector<DebugDrawPipelineBase> m_render_pipelines;
     };
 } // namespace Mercury
