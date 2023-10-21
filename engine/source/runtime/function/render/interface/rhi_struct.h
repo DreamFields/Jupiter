@@ -54,6 +54,21 @@ namespace Mercury
         uint32_t height;
     };
 
+    struct RHIRect2D
+    {
+        RHIOffset2D offset;
+        RHIExtent2D extent;
+    };
+
+    struct RHISwapChainDesc
+    {
+        RHIExtent2D extent;
+        RHIFormat   imageFormat;
+        RHIViewport* viewport;
+        RHIRect2D* scissor;
+        std::vector<RHIImageView*> imageViews;
+    };
+
     struct RHIPushConstantRange
     {
         RHIShaderStageFlags stageFlags;
@@ -132,11 +147,6 @@ namespace Mercury
         RHIBool32 primitiveRestartEnable;
     };
 
-    struct RHIRect2D
-    {
-        RHIOffset2D offset;
-        RHIExtent2D extent;
-    };
 
     struct RHIPipelineViewportStateCreateInfo
     {

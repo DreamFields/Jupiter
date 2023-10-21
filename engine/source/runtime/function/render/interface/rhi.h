@@ -26,6 +26,9 @@ namespace Mercury
         virtual RHIShader* createShaderModule(const std::vector<unsigned char>& shader_code) = 0;
         virtual bool createPipelineLayout(const RHIPipelineLayoutCreateInfo* pCreateInfo, RHIPipelineLayout*& pPipelineLayout) = 0;
 
+        // query
+        virtual RHISwapChainDesc getSwapchainInfo() = 0;
+
         // destroy
         virtual void destroyDevice() = 0;
         virtual void destroyImageView(RHIImageView* imageView) = 0;

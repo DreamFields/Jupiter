@@ -82,6 +82,22 @@ namespace Mercury
     typedef uint32_t RHIFlags;
     typedef uint32_t RHISampleMask;
 
+    enum RHICullModeFlagBits {
+        RHI_CULL_MODE_NONE = 0,
+        RHI_CULL_MODE_FRONT_BIT = 0x00000001,
+        RHI_CULL_MODE_BACK_BIT = 0x00000002,
+        RHI_CULL_MODE_FRONT_AND_BACK = 0x00000003,
+        RHI_CULL_MODE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+    };
+
+    enum RHIColorComponentFlagBits {
+        RHI_COLOR_COMPONENT_R_BIT = 0x00000001,
+        RHI_COLOR_COMPONENT_G_BIT = 0x00000002,
+        RHI_COLOR_COMPONENT_B_BIT = 0x00000004,
+        RHI_COLOR_COMPONENT_A_BIT = 0x00000008,
+        RHI_COLOR_COMPONENT_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+    };
+
     enum RHIShaderStageFlagBits : int
     {
         RHI_SHADER_STAGE_VERTEX_BIT = 0x00000001,

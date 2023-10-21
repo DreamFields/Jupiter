@@ -30,6 +30,10 @@ namespace Mercury
         DebugDrawPipelineType m_pipeline_type;
         DebugDrawPipeline(DebugDrawPipelineType pipelineType) { m_pipeline_type = pipelineType; }
         void initilialize();
+        void setupAttachments();
+        void setupRenderPass();
+        void setupFramebuffer();
+        void setupDescriptorLayout();
     private:
         void setupPipelines();
         std::shared_ptr<RHI> m_rhi;

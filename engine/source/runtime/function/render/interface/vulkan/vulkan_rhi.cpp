@@ -15,6 +15,8 @@ namespace Mercury
 
         // 视口初始化
         m_viewport = { 0.0f, 0.0f, static_cast<float>(window_size[0]), static_cast<float>(window_size[1]), 0.0f, 0.0f };
+        // 裁剪矩形初始化
+        m_scissor = { {0,0},{static_cast<uint32_t>(window_size[0]),static_cast<uint32_t>(window_size[1])} };
 
         // 是否使用Vulkan Debug工具（vscode cmake tools会自动配置NDEBUG宏）NDEBUG宏是C++标准的一部分，意思是“不调试”。
 #ifndef NDEBUG
@@ -137,12 +139,10 @@ namespace Mercury
         m_swapchain_images_format = (RHIFormat)chosen_surface_format.format;
         m_swapchain_extend.height = chosen_extent.height;
         m_swapchain_extend.width = chosen_extent.width;
+        // 重新设置裁剪矩形
+        m_scissor = { {0, 0}, {m_swapchain_extend.width, m_swapchain_extend.height} };
 
         std::cout << "create swapchain success!" << std::endl;
-
-        // todo m_scissor
-
-
     }
 
     // 指定颜色通道和类型
@@ -669,6 +669,16 @@ namespace Mercury
 #endif
 
         return extensions;
+    }
+
+    RHISwapChainDesc VulkanRHI::getSwapchainInfo() {
+        RHISwapChainDesc desc;
+        desc.imageFormat = m_swapchain_images_format;
+        desc.extent = m_swapchain_extend;
+        desc.scissor = &m_scissor;
+        desc.imageViews = m_swapchain_imageviews;
+        desc.viewport = &m_viewport;
+        return desc;
     }
 
     void VulkanRHI::destroyDevice() {

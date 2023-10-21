@@ -27,7 +27,8 @@ namespace Mercury
         RHIShader* createShaderModule(const std::vector<unsigned char>& shader_code) override;
         bool createPipelineLayout(const RHIPipelineLayoutCreateInfo* pCreateInfo, RHIPipelineLayout*& pPipelineLayout) override;
 
-
+        // query
+        RHISwapChainDesc getSwapchainInfo() override;
 
         // destroy
         void destroyDevice() override;
@@ -37,6 +38,7 @@ namespace Mercury
     public:
         GLFWwindow* m_window{ nullptr };
         RHIViewport m_viewport;
+        RHIRect2D m_scissor;
         VkSurfaceKHR  m_surface{ nullptr };
         VkPhysicalDevice  m_physical_device{ nullptr };
         QueueFamilyIndices m_queue_indices;
