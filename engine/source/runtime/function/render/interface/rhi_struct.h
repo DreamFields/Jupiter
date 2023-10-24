@@ -8,11 +8,15 @@ namespace Mercury
 {
     ///////////////////////class/////////////////
     class RHIQueue {};
+    class RHIImage {};
     class RHIImageView {};
     class RHIDescriptorSetLayout {};
     class RHIShader {};
     class RHIPipeline {};
     class RHIPipelineLayout {};
+    class RHIRenderPass {};
+    class RHIFramebuffer {};
+    class RHIDeviceMemory {};
 
     //////////////////////struct/////////////////
     struct RHIViewport
@@ -67,6 +71,13 @@ namespace Mercury
         RHIViewport* viewport;
         RHIRect2D* scissor;
         std::vector<RHIImageView*> imageViews;
+    };
+
+    struct RHIDepthImageDesc
+    {
+        RHIImage* depth_image = VK_NULL_HANDLE;
+        RHIImageView* depth_image_view = VK_NULL_HANDLE;
+        RHIFormat depth_image_format;
     };
 
     struct RHIPushConstantRange
@@ -220,6 +231,62 @@ namespace Mercury
         RHIPipelineDynamicStateCreateFlags flags;
         uint32_t dynamicStateCount;
         const RHIDynamicState* pDynamicStates;
+    };
+
+    struct RHIAttachmentDescription {
+        RHIAttachmentDescriptionFlags flags;
+        RHIFormat format;
+        RHISampleCountFlagBits samples;
+        RHIAttachmentLoadOp loadOp;
+        RHIAttachmentStoreOp storeOp;
+        RHIAttachmentLoadOp stencilLoadOp;
+        RHIAttachmentStoreOp stencilStoreOp;
+        RHIImageLayout initialLayout;
+        RHIImageLayout finalLayout;
+    };
+
+    struct RHIAttachmentReference
+    {
+        uint32_t attachment;
+        RHIImageLayout layout;
+    };
+
+    struct RHISubpassDescription
+    {
+        RHISubpassDescriptionFlags flags;
+        RHIPipelineBindPoint pipelineBindPoint;
+        uint32_t inputAttachmentCount;
+        const RHIAttachmentReference* pInputAttachments;
+        uint32_t colorAttachmentCount;
+        const RHIAttachmentReference* pColorAttachments;
+        const RHIAttachmentReference* pResolveAttachments;
+        const RHIAttachmentReference* pDepthStencilAttachment;
+        uint32_t preserveAttachmentCount;
+        const uint32_t* pPreserveAttachments;
+    };
+
+    struct RHISubpassDependency
+    {
+        uint32_t srcSubpass;
+        uint32_t dstSubpass;
+        RHIPipelineStageFlags srcStageMask;
+        RHIPipelineStageFlags dstStageMask;
+        RHIAccessFlags srcAccessMask;
+        RHIAccessFlags dstAccessMask;
+        RHIDependencyFlags dependencyFlags;
+    };
+
+    struct RHIRenderPassCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIRenderPassCreateFlags flags;
+        uint32_t attachmentCount;
+        const RHIAttachmentDescription* pAttachments;
+        uint32_t subpassCount;
+        const RHISubpassDescription* pSubpasses;
+        uint32_t dependencyCount;
+        const RHISubpassDependency* pDependencies;
     };
 
     struct RHIGraphicsPipelineCreateInfo

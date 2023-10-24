@@ -18,8 +18,87 @@ namespace Mercury
 
     void DebugDrawPipeline::setupAttachments() {}
 
-    // todo
-    void DebugDrawPipeline::setupRenderPass() {}
+    // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Render_passes
+    // 在pipeline创建之前，需要告诉图形API在呈现时将有多少颜色和深度缓冲区、每个缓冲区使用多少采样、渲染操作中如何处理它们的内容
+    void DebugDrawPipeline::setupRenderPass() {
+        /* 单个渲染通道可以包含多个子通道/子过程。子通道是后续渲染操作，取决于先前通道中帧缓冲区的内容，例如一个接一个应用的一系列后期处理效果。
+        如果将这些渲染操作分组到一个渲染通道中，则 Vulkan 能够对操作重新排序并节省内存带宽以获得更好的性能。 */
+
+        /*
+         * 附件(attachment)是一个内存位置，它能够作为帧缓冲的一个缓冲，可以将它想象为一张图片
+         */
+
+         // -----------------颜色缓冲区附件-----------------
+        RHIAttachmentDescription color_attachment_description{};
+        color_attachment_description.format = m_rhi->getSwapchainInfo().imageFormat;
+        color_attachment_description.samples = RHI_SAMPLE_COUNT_1_BIT; // 不使用多采样
+        // LoadOp 和 storeOp 决定在呈现之前和呈现之后如何处理附件中的数据(应用于颜色和深度数据）。
+        color_attachment_description.loadOp = RHI_ATTACHMENT_LOAD_OP_CLEAR; // 在开始时将值清除为常量，使用 clear 操作在绘制新帧之前将 framebuffer 清除为黑色。
+        color_attachment_description.storeOp = RHI_ATTACHMENT_STORE_OP_STORE; // 渲染的内容将存储在内存中，可以在以后读取
+        // stencilLoadOp / stencilStoreOp应用于模板测试数据
+        color_attachment_description.stencilLoadOp = RHI_ATTACHMENT_LOAD_OP_DONT_CARE; // 现有内容是未定义的，不关心它们
+        color_attachment_description.stencilStoreOp = RHI_ATTACHMENT_STORE_OP_DONT_CARE; // 渲染操作后，帧缓冲区的内容将未定义
+        // Vulkan 中的纹理和帧缓冲由具有特定像素格式的 VkImage 对象表示，但是内存中像素的布局可能会根据您尝试对图像执行的操作而更改。
+        // 也就是说，图像需要过渡到适合他们接下来将要参与的操作的特定布局。
+        color_attachment_description.initialLayout = RHI_IMAGE_LAYOUT_UNDEFINED; // InitialLayout 指定在开始呈现传递之前图像将具有哪种布局。
+        color_attachment_description.finalLayout = RHI_IMAGE_LAYOUT_PRESENT_SRC_KHR; // FinalLayout 指定在呈现传递完成时自动转换到的布局
+
+        // 每个子通道都引用我们在前面部分中使用结构描述的一个或多个附件
+        RHIAttachmentReference color_attachment_reference{};
+        color_attachment_reference.attachment = 0; // 数组中的索引指定要引用的附件。通过片段着色器的指令：`layout(location = 0) out vec4 outColor`来直接引用
+        color_attachment_reference.layout = RHI_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // 该布局将为我们提供最佳性能。
+
+        // -----------------深度缓冲区附件-----------------
+        RHIAttachmentDescription depth_attachment_description{};
+        depth_attachment_description.format = m_rhi->getDepthImageInfo().depth_image_format;
+        depth_attachment_description.samples = RHI_SAMPLE_COUNT_1_BIT;
+        depth_attachment_description.loadOp = RHI_ATTACHMENT_LOAD_OP_LOAD;
+        depth_attachment_description.storeOp = RHI_ATTACHMENT_STORE_OP_STORE;
+        depth_attachment_description.stencilLoadOp = RHI_ATTACHMENT_LOAD_OP_DONT_CARE;
+        depth_attachment_description.stencilStoreOp = RHI_ATTACHMENT_STORE_OP_DONT_CARE;
+        depth_attachment_description.initialLayout = RHI_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depth_attachment_description.finalLayout = RHI_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        RHIAttachmentReference depth_attachment_reference{};
+        depth_attachment_reference.attachment = 1;
+        depth_attachment_reference.layout = RHI_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        // ----------------渲染子通道/子过程----------------------
+        RHISubpassDescription subpass{};
+        subpass.pipelineBindPoint = RHI_PIPELINE_BIND_POINT_GRAPHICS; // 用于指定此子通道支持的管线类型
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &color_attachment_reference;
+        subpass.pDepthStencilAttachment = &depth_attachment_reference;
+
+        std::array<RHIAttachmentDescription, 2> attachments = { color_attachment_description, depth_attachment_description };
+
+        // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSubpassDependency.html
+        // 该结构描述子通道对之间的依赖关系。
+        RHISubpassDependency dependencies[1] = {};
+        RHISubpassDependency& debug_draw_dependency = dependencies[0];
+        debug_draw_dependency.srcSubpass = 0;
+        debug_draw_dependency.dstSubpass = RHI_SUBPASS_EXTERNAL;
+        debug_draw_dependency.srcStageMask = RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RHI_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        debug_draw_dependency.dstStageMask = RHI_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RHI_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        debug_draw_dependency.srcAccessMask = RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | RHI_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT; // STORE_OP_STORE
+        debug_draw_dependency.dstAccessMask = RHI_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | RHI_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        debug_draw_dependency.dependencyFlags = 0; // NOT BY REGION
+
+        RHIRenderPassCreateInfo renderpass_create_info{};
+        renderpass_create_info.sType = RHI_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderpass_create_info.attachmentCount = attachments.size();
+        renderpass_create_info.pAttachments = attachments.data();
+        renderpass_create_info.subpassCount = 1;
+        renderpass_create_info.pSubpasses = &subpass;
+        renderpass_create_info.dependencyCount = 1;
+        renderpass_create_info.pDependencies = dependencies;
+
+        if (m_rhi->createRenderPass(&renderpass_create_info, m_framebuffer.render_pass) != RHI_SUCCESS)
+        {
+            throw std::runtime_error("create inefficient pick render pass");
+        }
+
+    }
 
     // todo
     void DebugDrawPipeline::setupFramebuffer() {}

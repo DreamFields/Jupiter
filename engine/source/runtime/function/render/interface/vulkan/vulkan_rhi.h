@@ -26,9 +26,12 @@ namespace Mercury
         void createFramebufferImageAndView() override;
         RHIShader* createShaderModule(const std::vector<unsigned char>& shader_code) override;
         bool createPipelineLayout(const RHIPipelineLayoutCreateInfo* pCreateInfo, RHIPipelineLayout*& pPipelineLayout) override;
+        bool createRenderPass(const RHIRenderPassCreateInfo* pCreateInfo, RHIRenderPass*& pRenderPass) override;
+
 
         // query
         RHISwapChainDesc getSwapchainInfo() override;
+        RHIDepthImageDesc getDepthImageInfo() override;
 
         // destroy
         void destroyDevice() override;
@@ -51,6 +54,12 @@ namespace Mercury
         RHIFormat m_swapchain_images_format{ RHI_FORMAT_UNDEFINED };
         RHIExtent2D m_swapchain_extend;
         std::vector<RHIImageView*> m_swapchain_imageviews;
+
+        // todo depth buffer
+        RHIFormat m_depth_image_format{ VK_FORMAT_UNDEFINED };
+        RHIImageView* m_depth_image_view = new VulkanImageView();
+        RHIImage* m_depth_image = new VulkanImage();
+        VkDeviceMemory m_depth_image_memory{ nullptr };
 
 
     private:
@@ -82,6 +91,11 @@ namespace Mercury
         VkSurfaceFormatKHR chooseSwapChainSurfaceFormatFromDetails(const std::vector<VkSurfaceFormatKHR>& available_surface_formats);
         VkPresentModeKHR chooseSwapchainPresentModeFromDetails(const std::vector<VkPresentModeKHR>& available_present_modes);
         VkExtent2D chooseSwapchainExtentFromDetails(const VkSurfaceCapabilitiesKHR& capabilities);
+        VkFormat findDepthFormat();
+        VkFormat findSupportedFormat(
+            const std::vector<VkFormat>& candidates,
+            VkImageTiling tiling,
+            VkFormatFeatureFlags features);
 
     private:
         VkInstance m_instance{ nullptr };

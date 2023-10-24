@@ -25,9 +25,11 @@ namespace Mercury
         virtual void createCommandPool() = 0;
         virtual RHIShader* createShaderModule(const std::vector<unsigned char>& shader_code) = 0;
         virtual bool createPipelineLayout(const RHIPipelineLayoutCreateInfo* pCreateInfo, RHIPipelineLayout*& pPipelineLayout) = 0;
+        virtual bool createRenderPass(const RHIRenderPassCreateInfo* pCreateInfo, RHIRenderPass*& pRenderPass) = 0;
 
         // query
         virtual RHISwapChainDesc getSwapchainInfo() = 0;
+        virtual RHIDepthImageDesc getDepthImageInfo() = 0;
 
         // destroy
         virtual void destroyDevice() = 0;

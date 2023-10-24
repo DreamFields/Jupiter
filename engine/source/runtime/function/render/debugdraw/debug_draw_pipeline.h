@@ -24,6 +24,21 @@ namespace Mercury
         RHIPipeline* pipeline = nullptr;
     };
 
+    struct DebugDrawFrameBufferAttachment
+    {
+        RHIImage* image = nullptr;
+        RHIDeviceMemory* mem = nullptr;
+        RHIImageView* view = nullptr;
+        RHIFormat format;
+    };
+
+    struct DebugDrawFramebuffer {
+        int width;
+        int height;
+        RHIRenderPass* render_pass = nullptr;
+        std::vector<RHIFramebuffer*> framebuffers;
+        std::vector <DebugDrawFrameBufferAttachment> attachments;
+    };
 
     class DebugDrawPipeline {
     public:
@@ -39,5 +54,6 @@ namespace Mercury
         std::shared_ptr<RHI> m_rhi;
         RHIDescriptorSetLayout* m_descriptor_layout;
         std::vector<DebugDrawPipelineBase> m_render_pipelines;
+        DebugDrawFramebuffer m_framebuffer;
     };
 } // namespace Mercury
