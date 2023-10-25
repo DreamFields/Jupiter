@@ -27,6 +27,7 @@ namespace Mercury
         RHIShader* createShaderModule(const std::vector<unsigned char>& shader_code) override;
         bool createPipelineLayout(const RHIPipelineLayoutCreateInfo* pCreateInfo, RHIPipelineLayout*& pPipelineLayout) override;
         bool createRenderPass(const RHIRenderPassCreateInfo* pCreateInfo, RHIRenderPass*& pRenderPass) override;
+        bool createFrameBuffer(const RHIFramebufferCreateInfo* pCreateInfo, RHIFramebuffer*& pFramebuffer) override;
 
 
         // query
@@ -55,7 +56,7 @@ namespace Mercury
         RHIExtent2D m_swapchain_extend;
         std::vector<RHIImageView*> m_swapchain_imageviews;
 
-        // todo depth buffer
+        // depth buffer
         RHIFormat m_depth_image_format{ VK_FORMAT_UNDEFINED };
         RHIImageView* m_depth_image_view = new VulkanImageView();
         RHIImage* m_depth_image = new VulkanImage();

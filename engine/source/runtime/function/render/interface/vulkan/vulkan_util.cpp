@@ -22,10 +22,10 @@ namespace Mercury
         image_view_create_info.format = format; // The viewType parameter allows you to treat images as 1D textures, 2D textures, 3D textures and cube maps.
 
         // The components field allows you to swizzle the color channels around.(调配颜色通道)
-        image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-        image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        // image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        // image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        // image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        // image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
         image_view_create_info.subresourceRange.aspectMask = image_aspect_flags;
         image_view_create_info.subresourceRange.baseMipLevel = 0;  // 暂时不考虑Mipmap
         image_view_create_info.subresourceRange.levelCount = miplevels;
@@ -55,5 +55,81 @@ namespace Mercury
         return shader_module;
     }
 
+    // https://vulkan-tutorial.com/Texture_mapping/Images
+    // 图像对象的创建和内存分配
+    void VulkanUtil::createImage(
+        VkPhysicalDevice physical_device,
+        VkDevice device,
+        uint32_t image_width,
+        uint32_t image_height,
+        VkFormat format,
+        VkImageTiling image_tiling,
+        VkImageUsageFlags image_usage_flags,
+        VkMemoryPropertyFlags memory_property_flags,
+        VkImage& image,
+        VkDeviceMemory& memory,
+        VkImageCreateFlags image_create_flags,
+        uint32_t array_layers,
+        uint32_t miplevels)
+    {
+        VkImageCreateInfo image_create_info{};
+        image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        image_create_info.flags = image_create_flags;
+        image_create_info.imageType = VK_IMAGE_TYPE_2D;
+        image_create_info.extent.width = image_width;
+        image_create_info.extent.height = image_height;
+        image_create_info.extent.depth = 1;
+        image_create_info.mipLevels = miplevels;
+        image_create_info.arrayLayers = array_layers;
+        image_create_info.format = format;
+        image_create_info.tiling = image_tiling;
+        image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        image_create_info.usage = image_usage_flags;
+        image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+        image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (vkCreateImage(device, &image_create_info, nullptr, &image) != VK_SUCCESS)
+        {
+            std::runtime_error("failed to create image!");
+            return;
+        }
+
+        // 为图像分配内存的工作方式与为缓冲区分配内存完全相同。使用 vkGetImageMemoryRequirements 而不是 vkGetBufferMemoryRequirements
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(device, image, &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex =
+            findMemoryType(physical_device, memRequirements.memoryTypeBits, memory_property_flags);
+
+        if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
+        {
+            std::runtime_error("failed to allocate image memory!");
+            return;
+        }
+
+        // 使用 vkBindImageMemory 代替 vkBindBufferMemory
+        vkBindImageMemory(device, image, memory, 0);
+    }
+
+    uint32_t VulkanUtil::findMemoryType(VkPhysicalDevice      physical_device,
+        uint32_t              type_filter,
+        VkMemoryPropertyFlags properties_flag)
+    {
+        VkPhysicalDeviceMemoryProperties physical_device_memory_properties;
+        vkGetPhysicalDeviceMemoryProperties(physical_device, &physical_device_memory_properties);
+        for (uint32_t i = 0; i < physical_device_memory_properties.memoryTypeCount; i++)
+        {
+            if (type_filter & (1 << i) &&
+                (physical_device_memory_properties.memoryTypes[i].propertyFlags & properties_flag) == properties_flag)
+            {
+                return i;
+            }
+        }
+        std::runtime_error("findMemoryType error");
+        return 0;
+    }
 } // namespace Mercury
 

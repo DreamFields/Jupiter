@@ -100,8 +100,30 @@ namespace Mercury
 
     }
 
-    // todo
-    void DebugDrawPipeline::setupFramebuffer() {}
+    // 帧缓冲器对象引用所有 VkImageView 对象来表示附件Attachment。
+    void DebugDrawPipeline::setupFramebuffer() {
+        const std::vector<RHIImageView*>&& imageViews = m_rhi->getSwapchainInfo().imageViews;
+        m_framebuffer.framebuffers.resize(imageViews.size());
+        for (size_t i = 0; i < m_framebuffer.framebuffers.size(); i++)
+        {
+            RHIImageView* attachments[2] = { imageViews[i],m_rhi->getDepthImageInfo().depth_image_view };
+
+            // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Framebuffers
+            RHIFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType = RHI_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass = m_framebuffer.render_pass;
+            framebufferInfo.attachmentCount = sizeof(attachments) / sizeof(attachments[0]);
+            framebufferInfo.pAttachments = attachments;
+            framebufferInfo.width = m_rhi->getSwapchainInfo().extent.width;
+            framebufferInfo.height = m_rhi->getSwapchainInfo().extent.height;
+            framebufferInfo.layers = 1;
+
+            if (m_rhi->createFrameBuffer(&framebufferInfo, m_framebuffer.framebuffers[i]) != RHI_SUCCESS) {
+                throw std::runtime_error("failed to create framebuffer!");
+            }
+        }
+
+    }
 
     // todo
     void DebugDrawPipeline::setupDescriptorLayout() {}

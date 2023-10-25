@@ -102,4 +102,18 @@ namespace Mercury
     private:
         VkRenderPass m_resource;
     };
+    class VulkanFramebuffer : public RHIFramebuffer
+    {
+    public:
+        void setResource(VkFramebuffer res)
+        {
+            m_resource = res;
+        }
+        VkFramebuffer getResource() const
+        {
+            return m_resource;
+        }
+    private:
+        VkFramebuffer m_resource;
+    };
 } // namespace Mercury

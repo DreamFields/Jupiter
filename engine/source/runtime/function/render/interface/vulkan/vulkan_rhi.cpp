@@ -41,10 +41,6 @@ namespace Mercury
         // 创建逻辑设备
         createLogicalDevice();
 
-        // 创建命令池和命令缓冲区
-        createCommandPool();
-        createCommandBuffers();
-
         // 创建描述符池（https://registry.khronos.org/vulkan/specs/1.3-extensions/html/chap14.html）
         // 描述符是表示着色器资源的不透明数据结构，例如缓冲区、缓冲区视图、图像视图、采样器或组合图像采样器。
         createDescriptorPool();
@@ -63,6 +59,10 @@ namespace Mercury
 
         // 为交换链中的所有图像创建一个帧缓冲区
         createFramebufferImageAndView();
+
+        // 创建命令池和命令缓冲区
+        createCommandPool();
+        createCommandBuffers();
 
         // 创建资源分配器
         createAssetAllocator();
@@ -222,9 +222,34 @@ namespace Mercury
 
     }
 
-    // todo color buffer and depth buffer
+    // create color buffer and depth buffer
     void VulkanRHI::createFramebufferImageAndView()
     {
+        VulkanUtil::createImage(m_physical_device,
+            m_logical_device,
+            m_swapchain_extend.width,
+            m_swapchain_extend.height,
+            (VkFormat)m_depth_image_format,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            ((VulkanImage*)m_depth_image)->getResource(),
+            m_depth_image_memory,
+            0,
+            1,
+            1
+        );
+        ((VulkanImageView*)m_depth_image_view)->setResource(
+            VulkanUtil::createImageView(
+                m_logical_device,
+                ((VulkanImage*)m_depth_image)->getResource(),
+                (VkFormat)m_depth_image_format,
+                VK_IMAGE_ASPECT_DEPTH_BIT,
+                VK_IMAGE_VIEW_TYPE_2D,
+                1,
+                1
+            )
+        );
     }
 
     // debug callback
@@ -836,6 +861,48 @@ namespace Mercury
         else
         {
             throw std::runtime_error("vkCreateRenderPass failed!");
+            return false;
+        }
+    }
+
+
+    bool VulkanRHI::createFrameBuffer(const RHIFramebufferCreateInfo* pCreateInfo, RHIFramebuffer*& pFramebuffer) {
+        // image view
+        int image_view_size = pCreateInfo->attachmentCount;
+        std::vector<VkImageView> vk_image_view_list(image_view_size);
+        for (size_t i = 0; i < image_view_size; i++)
+        {
+            const auto& rhi_image_view_element = pCreateInfo->pAttachments[i];
+            auto& vk_image_view_element = vk_image_view_list[i];
+
+            vk_image_view_element = ((VulkanImageView*)rhi_image_view_element)->getResource();
+        }
+
+        // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Framebuffers
+        VkFramebufferCreateInfo create_info{};
+        create_info.sType = (VkStructureType)pCreateInfo->sType;
+        create_info.pNext = (const void*)pCreateInfo->pNext;
+        create_info.flags = (VkFramebufferCreateFlags)pCreateInfo->flags;
+        create_info.renderPass = ((VulkanRenderPass*)pCreateInfo->renderPass)->getResource();
+        create_info.attachmentCount = pCreateInfo->attachmentCount;
+        create_info.pAttachments = vk_image_view_list.data();
+        create_info.width = pCreateInfo->width;
+        create_info.height = pCreateInfo->height;
+        create_info.layers = pCreateInfo->layers;
+
+        pFramebuffer = new VulkanFramebuffer();
+        VkFramebuffer vk_framebuffer;
+        VkResult result = vkCreateFramebuffer(m_logical_device, &create_info, nullptr, &vk_framebuffer);
+        ((VulkanFramebuffer*)pFramebuffer)->setResource(vk_framebuffer);
+
+        if (result == VK_SUCCESS)
+        {
+            std::cout << "vkCreateFramebuffer success!" << std::endl;
+            return RHI_SUCCESS;
+        }
+        else
+        {
+            throw std::runtime_error("vkCreateFramebuffer failed!");
             return false;
         }
     }

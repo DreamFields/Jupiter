@@ -26,6 +26,7 @@ namespace Mercury
         virtual RHIShader* createShaderModule(const std::vector<unsigned char>& shader_code) = 0;
         virtual bool createPipelineLayout(const RHIPipelineLayoutCreateInfo* pCreateInfo, RHIPipelineLayout*& pPipelineLayout) = 0;
         virtual bool createRenderPass(const RHIRenderPassCreateInfo* pCreateInfo, RHIRenderPass*& pRenderPass) = 0;
+        virtual bool createFrameBuffer(const RHIFramebufferCreateInfo* pCreateInfo, RHIFramebuffer*& pFramebuffer) = 0;
 
         // query
         virtual RHISwapChainDesc getSwapchainInfo() = 0;
