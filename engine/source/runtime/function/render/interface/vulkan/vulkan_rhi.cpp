@@ -61,8 +61,8 @@ namespace Mercury
         createFramebufferImageAndView();
 
         // 创建命令池和命令缓冲区
-        createCommandPool();
-        createCommandBuffers();
+        createCommandPool(); // 命令池：管理命令缓冲，命令缓冲将会在命令池中分配
+        createCommandBuffers(); // 命令缓冲：Vulkan 命令存储的位置
 
         // 创建资源分配器
         createAssetAllocator();
@@ -646,12 +646,71 @@ namespace Mercury
         return VkFormat();
     }
 
+    // 命令缓冲区通过在其中一个设备队列（如我们检索的图形和演示队列）上提交来执行。每个命令池只能分配在单一类型的队列上提交的命令缓冲区。
+    // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Command_buffers
     void VulkanRHI::createCommandPool()
     {
+        // default graphic command pool
+        {
+            VkCommandPoolCreateInfo command_pool_create_info{};
+            VkCommandPool vk_command_pool;
+            command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            command_pool_create_info.pNext = nullptr;
+            command_pool_create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // 允许单独重新记录命令缓冲区，如果没有此标志，它们必须一起重置
+            command_pool_create_info.queueFamilyIndex = m_queue_indices.graphics_family.value();
+
+            if (vkCreateCommandPool(m_logical_device, &command_pool_create_info, nullptr, &vk_command_pool) != VK_SUCCESS) {
+                throw std::runtime_error("failed to create command pool!");
+            }
+
+            m_rhi_command_pool = new VulkanCommandPool();
+            ((VulkanCommandPool*)m_rhi_command_pool)->setResource(vk_command_pool);
+        }
+
+        // other command pools
+        {
+            VkCommandPoolCreateInfo command_pool_create_info;
+            command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            command_pool_create_info.pNext = nullptr;
+            command_pool_create_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+            command_pool_create_info.queueFamilyIndex = m_queue_indices.graphics_family.value();
+
+            for (uint32_t i = 0; i < k_max_frames_in_flight; ++i)
+            {
+                if (vkCreateCommandPool(m_logical_device, &command_pool_create_info, nullptr, &m_command_pools[i]) != VK_SUCCESS)
+                {
+                    throw std::runtime_error("failed to create command pool!");
+                }
+            }
+        }
+
+        std::cout << "create command pool success!" << std::endl;
     }
 
+    // 分配命令缓冲区。命令缓冲区将在命令池被销毁时自动释放，因此我们不需要显式清理。
     void VulkanRHI::createCommandBuffers()
     {
+        VkCommandBufferAllocateInfo command_buffer_allocate_info{};
+        command_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        // level 参数指定分配的命令缓冲区是主命令缓冲区还是辅助命令缓冲区。
+        // VK_COMMAND_BUFFER_LEVEL_PRIMARY 主缓冲区：可以提交到队列执行，但不能从其他命令缓冲区调用
+        // VK_COMMAND_BUFFER_LEVEL_SECONDARY 辅助命令缓冲区：不能直接提交，但可以从主命令缓冲区调用。
+        command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        command_buffer_allocate_info.commandBufferCount = 1U;
+
+        for (uint32_t i = 0; i < k_max_frames_in_flight; ++i)
+        {
+            command_buffer_allocate_info.commandPool = m_command_pools[i];
+            VkCommandBuffer vk_command_buffer;
+            if (vkAllocateCommandBuffers(m_logical_device, &command_buffer_allocate_info, &vk_command_buffer) != VK_SUCCESS)
+            {
+                throw std::runtime_error("failed to allocate command buffers!");
+            }
+            m_vk_command_buffers[i] = vk_command_buffer;
+            m_rhi_command_buffers[i] = new VulkanCommandBuffer();
+            ((VulkanCommandBuffer*)m_rhi_command_buffers[i])->setResource(vk_command_buffer);
+        }
+        std::cout << "allocate command buffers success!" << std::endl;
     }
 
     void VulkanRHI::createDescriptorPool()
@@ -906,6 +965,13 @@ namespace Mercury
             return false;
         }
     }
+
+
+    // todo 将我们要执行的命令写入命令缓冲区:https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Command_buffers#page_Command-buffer-recording
+    bool VulkanRHI::beginCommandBuffer(RHICommandBuffer* commandBuffer, const RHICommandBufferBeginInfo* pBeginInfo) {
+        return false;
+    }
+
 
     std::vector<const char*> VulkanRHI::getRequiredExtensions()
     {

@@ -17,6 +17,8 @@ namespace Mercury
     class RHIRenderPass {};
     class RHIFramebuffer {};
     class RHIDeviceMemory {};
+    class RHICommandPool {};
+    class RHICommandBuffer {};
 
     //////////////////////struct/////////////////
     struct RHIViewport
@@ -289,7 +291,6 @@ namespace Mercury
         const RHISubpassDependency* pDependencies;
     };
 
-
     struct RHIFramebufferCreateInfo
     {
         RHIStructureType sType;
@@ -301,6 +302,26 @@ namespace Mercury
         uint32_t width;
         uint32_t height;
         uint32_t layers;
+    };
+
+    struct RHICommandBufferInheritanceInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIRenderPass* renderPass;
+        uint32_t subpass;
+        RHIFramebuffer* framebuffer;
+        RHIBool32 occlusionQueryEnable;
+        RHIQueryControlFlags queryFlags;
+        RHIQueryPipelineStatisticFlags pipelineStatistics;
+    };
+
+    struct RHICommandBufferBeginInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHICommandBufferUsageFlags flags;
+        const RHICommandBufferInheritanceInfo* pInheritanceInfo;
     };
 
     struct RHIGraphicsPipelineCreateInfo

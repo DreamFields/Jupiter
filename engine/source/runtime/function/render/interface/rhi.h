@@ -28,6 +28,9 @@ namespace Mercury
         virtual bool createRenderPass(const RHIRenderPassCreateInfo* pCreateInfo, RHIRenderPass*& pRenderPass) = 0;
         virtual bool createFrameBuffer(const RHIFramebufferCreateInfo* pCreateInfo, RHIFramebuffer*& pFramebuffer) = 0;
 
+        // command and write
+        virtual bool beginCommandBuffer(RHICommandBuffer* commandBuffer, const RHICommandBufferBeginInfo* pBeginInfo) = 0;
+
         // query
         virtual RHISwapChainDesc getSwapchainInfo() = 0;
         virtual RHIDepthImageDesc getDepthImageInfo() = 0;

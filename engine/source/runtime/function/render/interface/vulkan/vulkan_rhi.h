@@ -29,6 +29,8 @@ namespace Mercury
         bool createRenderPass(const RHIRenderPassCreateInfo* pCreateInfo, RHIRenderPass*& pRenderPass) override;
         bool createFrameBuffer(const RHIFramebufferCreateInfo* pCreateInfo, RHIFramebuffer*& pFramebuffer) override;
 
+        // command and write
+        bool beginCommandBuffer(RHICommandBuffer* commandBuffer, const RHICommandBufferBeginInfo* pBeginInfo) override;
 
         // query
         RHISwapChainDesc getSwapchainInfo() override;
@@ -40,6 +42,8 @@ namespace Mercury
         void destroyShaderModule(RHIShader* shaderModule) override;
 
     public:
+        static uint8_t const k_max_frames_in_flight{ 3 };
+
         GLFWwindow* m_window{ nullptr };
         RHIViewport m_viewport;
         RHIRect2D m_scissor;
@@ -61,6 +65,14 @@ namespace Mercury
         RHIImageView* m_depth_image_view = new VulkanImageView();
         RHIImage* m_depth_image = new VulkanImage();
         VkDeviceMemory m_depth_image_memory{ nullptr };
+
+        // command pool and buffers
+        RHICommandPool* m_rhi_command_pool;
+        RHICommandBuffer* m_rhi_command_buffers[k_max_frames_in_flight];
+        RHICommandBuffer* m_current_command_buffer = new VulkanCommandBuffer();
+        VkCommandPool   m_command_pools[k_max_frames_in_flight];
+        VkCommandBuffer m_vk_command_buffers[k_max_frames_in_flight];
+
 
 
     private:
@@ -103,6 +115,7 @@ namespace Mercury
         uint32_t m_vulkan_api_version{ VK_API_VERSION_1_0 };
         std::vector<char const*> m_device_extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME }; // 已经添加了交换链扩展支持检查
         const std::vector<char const*> m_validation_layers{ "VK_LAYER_KHRONOS_validation" };
+
 
     };
 } // namespace Mercury
