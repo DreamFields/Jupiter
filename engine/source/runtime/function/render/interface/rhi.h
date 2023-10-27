@@ -17,6 +17,7 @@ namespace Mercury
     public:
         // init
         virtual void initialize(RHIInitInfo init_info) = 0;
+        virtual void prepareContext() = 0;
 
         // allocate and create
         virtual void createSwapchain() = 0;

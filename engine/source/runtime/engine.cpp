@@ -33,6 +33,9 @@ namespace Mercury
     bool MercuryEngine::tickOneFrame(float delta_time)
     {
         calculateFPS(delta_time);
+
+        rendererTick(delta_time);
+    
         g_runtime_global_context.m_window_system->pollEvents();
         g_runtime_global_context.m_window_system->setTitle(
             std::string("Mercury - " + std::to_string(getFPS()) + " FPS").c_str()
@@ -71,6 +74,12 @@ namespace Mercury
 
         }
         return delta_time;
+    }
+
+
+    bool MercuryEngine::rendererTick(float delta_time) {
+        g_runtime_global_context.m_render_system->tick(delta_time);
+        return true;
     }
 
 } // namespace Mercury

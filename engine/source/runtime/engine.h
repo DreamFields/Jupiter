@@ -28,9 +28,10 @@ namespace Mercury
     protected:
         int m_fps{ 0 };
         int m_frame_count{ 0 };
-        float m_average_duration {0.f};
+        float m_average_duration{ 0.f };
         std::chrono::steady_clock::time_point m_last_tick_time_point{ std::chrono::steady_clock::now() };
 
+        bool rendererTick(float delta_time);
     };
 
 

@@ -70,6 +70,11 @@ namespace Mercury
         std::cout << "initialize success!" << std::endl;
     }
 
+    void VulkanRHI::prepareContext() {
+        m_vk_current_command_buffer = m_vk_command_buffers[m_current_frame_index];
+        ((VulkanCommandBuffer*)m_current_command_buffer)->setResource(m_vk_current_command_buffer);
+    }
+
     void VulkanRHI::createSwapchain()
     {
         // query all support of this physical device

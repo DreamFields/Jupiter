@@ -55,5 +55,8 @@ namespace Mercury
         RHIDescriptorSetLayout* m_descriptor_layout;
         std::vector<DebugDrawPipelineBase> m_render_pipelines;
         DebugDrawFramebuffer m_framebuffer;
+
+        //todo math 
+        // Matrix4x4 m_proj_view_matrix;
     };
 } // namespace Mercury

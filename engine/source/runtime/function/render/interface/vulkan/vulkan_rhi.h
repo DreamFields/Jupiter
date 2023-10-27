@@ -18,7 +18,8 @@ namespace Mercury
     class VulkanRHI final :public RHI {
     public:
         // initialize
-        virtual void initialize(RHIInitInfo init_info) override final;
+        void initialize(RHIInitInfo init_info) override final;
+        void prepareContext() override final;
 
         // allocate and create
         void createSwapchain() override;
@@ -72,7 +73,9 @@ namespace Mercury
         RHICommandBuffer* m_current_command_buffer = new VulkanCommandBuffer();
         VkCommandPool   m_command_pools[k_max_frames_in_flight];
         VkCommandBuffer m_vk_command_buffers[k_max_frames_in_flight];
-
+        VkCommandBuffer m_vk_current_command_buffer;
+        uint8_t m_current_frame_index{ 0 };
+        uint32_t m_current_swapchain_image_index{ 0 }; // todo set
 
 
     private:
