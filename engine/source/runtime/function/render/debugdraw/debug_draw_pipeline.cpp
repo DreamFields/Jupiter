@@ -73,6 +73,7 @@ namespace Mercury
         std::array<RHIAttachmentDescription, 2> attachments = { color_attachment_description, depth_attachment_description };
 
         // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSubpassDependency.html
+        // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Rendering_and_presentation#page_Subpass-dependencies
         // 该结构描述子通道对之间的依赖关系。
         RHISubpassDependency dependencies[1] = {};
         RHISubpassDependency& debug_draw_dependency = dependencies[0];
@@ -129,8 +130,6 @@ namespace Mercury
     void DebugDrawPipeline::setupDescriptorLayout() {}
 
     void DebugDrawPipeline::setupPipelines() {
-        // todo RHIPipelineLayoutCreateInfo
-
         // RHI Shader Module
         RHIShader* vert_shader_module = m_rhi->createShaderModule(DEBUGDRAW_VERT);
         RHIShader* frag_shader_module = m_rhi->createShaderModule(DEBUGDRAW_FRAG);
@@ -203,8 +202,15 @@ namespace Mercury
         multisampling.alphaToCoverageEnable = RHI_FALSE; // Optional
         multisampling.alphaToOneEnable = RHI_FALSE; // Optional
 
-        // todo 深度测试、模板测试
-        // VkPipelineDepthStencilStateCreateInfo
+        // 深度测试、模板测试
+        // https://vulkan-tutorial.com/Depth_buffering#page_Depth-and-stencil-state
+        RHIPipelineDepthStencilStateCreateInfo depth_stencil_create_info{};
+        depth_stencil_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depth_stencil_create_info.depthTestEnable = RHI_TRUE;
+        depth_stencil_create_info.depthWriteEnable = RHI_TRUE;
+        depth_stencil_create_info.depthCompareOp = RHI_COMPARE_OP_LESS;
+        depth_stencil_create_info.depthBoundsTestEnable = RHI_FALSE;
+        depth_stencil_create_info.stencilTestEnable = RHI_FALSE;
 
         // 片段着色器返回颜色之后，需要将它与已经在 framebuffer 中的颜色组合起来。这种转换被称为色彩混合，有2种方法：
         // 混合新旧值以产生最终颜色; 使用按位运算合并新旧值
@@ -245,8 +251,8 @@ namespace Mercury
         // uniform是类似于动态状态变量的全局变量，可以在绘制时更改这些变量，以更改着色器的行为，而无需重新创建它们。 它们通常用于将变换矩阵传递到顶点着色器，或在片段着色器中创建纹理采样器。
         RHIPipelineLayoutCreateInfo pipeline_layout_create_info{};
         pipeline_layout_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipeline_layout_create_info.setLayoutCount = 0; // todo set layout descriptor
-        pipeline_layout_create_info.pSetLayouts = &m_descriptor_layout;
+        pipeline_layout_create_info.setLayoutCount = 0; 
+        // pipeline_layout_create_info.pSetLayouts = &m_descriptor_layout; // todo set layout descriptor
         pipeline_layout_create_info.pushConstantRangeCount = 0;
         pipeline_layout_create_info.pPushConstantRanges = nullptr;
         m_render_pipelines.resize(1);
@@ -255,11 +261,66 @@ namespace Mercury
             throw std::runtime_error("create mesh inefficient pick pipeline layout");
         }
 
-        // todo graphics pipeline create 
+        // graphics pipeline create 
+        RHIGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = RHI_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = 2;
+        pipelineInfo.pStages = shader_stages;
+        pipelineInfo.pVertexInputState = &vertexInputInfo;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDepthStencilState = &depth_stencil_create_info;
+        pipelineInfo.layout = m_render_pipelines[0].layout;
+        pipelineInfo.renderPass = m_framebuffer.render_pass;
+        pipelineInfo.subpass = 0;
+        pipelineInfo.basePipelineHandle = RHI_NULL_HANDLE;
+        pipelineInfo.pDynamicState = &dynamicState;
+
+        switch (m_pipeline_type)
+        {
+        case _debug_draw_pipeline_type_point:
+            inputAssembly.topology = RHI_PRIMITIVE_TOPOLOGY_POINT_LIST;
+            break;
+        case _debug_draw_pipeline_type_line:
+        {
+            inputAssembly.topology = RHI_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        }
+        case _debug_draw_pipeline_type_triangle:
+        {
+            inputAssembly.topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        }
+        case _debug_draw_pipeline_type_point_no_depth_test:
+        {
+            inputAssembly.topology = RHI_PRIMITIVE_TOPOLOGY_POINT_LIST;
+            depth_stencil_create_info.depthTestEnable = RHI_FALSE;
+        }
+        case _debug_draw_pipeline_type_line_no_depth_test:
+        {
+            inputAssembly.topology = RHI_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            depth_stencil_create_info.depthTestEnable = RHI_FALSE;
+        }
+        case _debug_draw_pipeline_type_triangle_no_depth_test:
+        {
+            inputAssembly.topology = RHI_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            depth_stencil_create_info.depthTestEnable = RHI_FALSE;
+        }
+        default:
+            break;
+        }
+
+        if (m_rhi->createGraphicsPipelines(
+            RHI_NULL_HANDLE,
+            1,
+            &pipelineInfo,
+            m_render_pipelines[0].pipeline
+        ) != RHI_SUCCESS) {
+            throw std::runtime_error("create debug draw graphics pipeline");
+        }
 
         m_rhi->destroyShaderModule(vert_shader_module);
         m_rhi->destroyShaderModule(frag_shader_module);
-
-
     }
 } // namespace Mercury

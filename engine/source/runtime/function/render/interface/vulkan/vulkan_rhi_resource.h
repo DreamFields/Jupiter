@@ -145,4 +145,32 @@ namespace Mercury
     private:
         VkCommandBuffer m_resource;
     };
+    class VulkanPipeline : public RHIPipeline
+    {
+    public:
+        void setResource(VkPipeline res)
+        {
+            m_resource = res;
+        }
+        VkPipeline getResource() const
+        {
+            return m_resource;
+        }
+    private:
+        VkPipeline m_resource;
+    };
+    class VulkanPipelineCache : public RHIPipelineCache
+    {
+    public:
+        void setResource(VkPipelineCache res)
+        {
+            m_resource = res;
+        }
+        VkPipelineCache getResource() const
+        {
+            return m_resource;
+        }
+    private:
+        VkPipelineCache m_resource;
+    };
 } // namespace Mercury

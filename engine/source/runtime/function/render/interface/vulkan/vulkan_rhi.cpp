@@ -971,6 +971,339 @@ namespace Mercury
         }
     }
 
+    // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Conclusion
+    bool VulkanRHI::createGraphicsPipelines(
+        RHIPipelineCache* pipelineCache,
+        uint32_t createInfoCount,
+        const RHIGraphicsPipelineCreateInfo* pCreateInfo,
+        RHIPipeline*& pPipelines) {
+        //pipeline_shader_stage_create_info
+        int pipeline_shader_stage_create_info_size = pCreateInfo->stageCount;
+        std::vector<VkPipelineShaderStageCreateInfo> vk_pipeline_shader_stage_create_info_list(pipeline_shader_stage_create_info_size);
+
+        int specialization_map_entry_size_total = 0;
+        int specialization_info_total = 0;
+        for (int i = 0; i < pipeline_shader_stage_create_info_size; ++i)
+        {
+            const auto& rhi_pipeline_shader_stage_create_info_element = pCreateInfo->pStages[i];
+            if (rhi_pipeline_shader_stage_create_info_element.pSpecializationInfo != nullptr)
+            {
+                specialization_info_total++;
+                specialization_map_entry_size_total += rhi_pipeline_shader_stage_create_info_element.pSpecializationInfo->mapEntryCount;
+            }
+        }
+        std::vector<VkSpecializationInfo> vk_specialization_info_list(specialization_info_total);
+        std::vector<VkSpecializationMapEntry> vk_specialization_map_entry_list(specialization_map_entry_size_total);
+        int specialization_map_entry_current = 0;
+        int specialization_info_current = 0;
+
+        for (int i = 0; i < pipeline_shader_stage_create_info_size; ++i)
+        {
+            const auto& rhi_pipeline_shader_stage_create_info_element = pCreateInfo->pStages[i];
+            auto& vk_pipeline_shader_stage_create_info_element = vk_pipeline_shader_stage_create_info_list[i];
+
+            if (rhi_pipeline_shader_stage_create_info_element.pSpecializationInfo != nullptr)
+            {
+                vk_pipeline_shader_stage_create_info_element.pSpecializationInfo = &vk_specialization_info_list[specialization_info_current];
+
+                VkSpecializationInfo vk_specialization_info{};
+                vk_specialization_info.mapEntryCount = rhi_pipeline_shader_stage_create_info_element.pSpecializationInfo->mapEntryCount;
+                vk_specialization_info.pMapEntries = &vk_specialization_map_entry_list[specialization_map_entry_current];
+                vk_specialization_info.dataSize = rhi_pipeline_shader_stage_create_info_element.pSpecializationInfo->dataSize;
+                vk_specialization_info.pData = (const void*)rhi_pipeline_shader_stage_create_info_element.pSpecializationInfo->pData;
+
+                //specialization_map_entry
+                for (int i = 0; i < rhi_pipeline_shader_stage_create_info_element.pSpecializationInfo->mapEntryCount; ++i)
+                {
+                    const auto& rhi_specialization_map_entry_element = rhi_pipeline_shader_stage_create_info_element.pSpecializationInfo->pMapEntries[i];
+                    auto& vk_specialization_map_entry_element = vk_specialization_map_entry_list[specialization_map_entry_current];
+
+                    vk_specialization_map_entry_element.constantID = rhi_specialization_map_entry_element->constantID;
+                    vk_specialization_map_entry_element.offset = rhi_specialization_map_entry_element->offset;
+                    vk_specialization_map_entry_element.size = rhi_specialization_map_entry_element->size;
+
+                    specialization_map_entry_current++;
+                };
+
+                specialization_info_current++;
+            }
+            else
+            {
+                vk_pipeline_shader_stage_create_info_element.pSpecializationInfo = nullptr;
+            }
+            vk_pipeline_shader_stage_create_info_element.sType = (VkStructureType)rhi_pipeline_shader_stage_create_info_element.sType;
+            vk_pipeline_shader_stage_create_info_element.pNext = (const void*)rhi_pipeline_shader_stage_create_info_element.pNext;
+            vk_pipeline_shader_stage_create_info_element.flags = (VkPipelineShaderStageCreateFlags)rhi_pipeline_shader_stage_create_info_element.flags;
+            vk_pipeline_shader_stage_create_info_element.stage = (VkShaderStageFlagBits)rhi_pipeline_shader_stage_create_info_element.stage;
+            vk_pipeline_shader_stage_create_info_element.module = ((VulkanShader*)rhi_pipeline_shader_stage_create_info_element.module)->getResource();
+            vk_pipeline_shader_stage_create_info_element.pName = rhi_pipeline_shader_stage_create_info_element.pName;
+        };
+
+        if (!((specialization_map_entry_size_total == specialization_map_entry_current)
+            && (specialization_info_total == specialization_info_current)))
+        {
+            throw std::runtime_error("(specialization_map_entry_size_total == specialization_map_entry_current)&& (specialization_info_total == specialization_info_current)");
+            return false;
+        }
+
+        //vertex_input_binding_description
+        int vertex_input_binding_description_size = pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
+        std::vector<VkVertexInputBindingDescription> vk_vertex_input_binding_description_list(vertex_input_binding_description_size);
+        for (int i = 0; i < vertex_input_binding_description_size; ++i)
+        {
+            const auto& rhi_vertex_input_binding_description_element = pCreateInfo->pVertexInputState->pVertexBindingDescriptions[i];
+            auto& vk_vertex_input_binding_description_element = vk_vertex_input_binding_description_list[i];
+
+            vk_vertex_input_binding_description_element.binding = rhi_vertex_input_binding_description_element.binding;
+            vk_vertex_input_binding_description_element.stride = rhi_vertex_input_binding_description_element.stride;
+            vk_vertex_input_binding_description_element.inputRate = (VkVertexInputRate)rhi_vertex_input_binding_description_element.inputRate;
+        };
+
+        //vertex_input_attribute_description
+        int vertex_input_attribute_description_size = pCreateInfo->pVertexInputState->vertexAttributeDescriptionCount;
+        std::vector<VkVertexInputAttributeDescription> vk_vertex_input_attribute_description_list(vertex_input_attribute_description_size);
+        for (int i = 0; i < vertex_input_attribute_description_size; ++i)
+        {
+            const auto& rhi_vertex_input_attribute_description_element = pCreateInfo->pVertexInputState->pVertexAttributeDescriptions[i];
+            auto& vk_vertex_input_attribute_description_element = vk_vertex_input_attribute_description_list[i];
+
+            vk_vertex_input_attribute_description_element.location = rhi_vertex_input_attribute_description_element.location;
+            vk_vertex_input_attribute_description_element.binding = rhi_vertex_input_attribute_description_element.binding;
+            vk_vertex_input_attribute_description_element.format = (VkFormat)rhi_vertex_input_attribute_description_element.format;
+            vk_vertex_input_attribute_description_element.offset = rhi_vertex_input_attribute_description_element.offset;
+        };
+
+        VkPipelineVertexInputStateCreateInfo vk_pipeline_vertex_input_state_create_info{};
+        vk_pipeline_vertex_input_state_create_info.sType = (VkStructureType)pCreateInfo->pVertexInputState->sType;
+        vk_pipeline_vertex_input_state_create_info.pNext = (const void*)pCreateInfo->pVertexInputState->pNext;
+        vk_pipeline_vertex_input_state_create_info.flags = (VkPipelineVertexInputStateCreateFlags)pCreateInfo->pVertexInputState->flags;
+        vk_pipeline_vertex_input_state_create_info.vertexBindingDescriptionCount = pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
+        vk_pipeline_vertex_input_state_create_info.pVertexBindingDescriptions = vk_vertex_input_binding_description_list.data();
+        vk_pipeline_vertex_input_state_create_info.vertexAttributeDescriptionCount = pCreateInfo->pVertexInputState->vertexAttributeDescriptionCount;
+        vk_pipeline_vertex_input_state_create_info.pVertexAttributeDescriptions = vk_vertex_input_attribute_description_list.data();
+
+        VkPipelineInputAssemblyStateCreateInfo vk_pipeline_input_assembly_state_create_info{};
+        vk_pipeline_input_assembly_state_create_info.sType = (VkStructureType)pCreateInfo->pInputAssemblyState->sType;
+        vk_pipeline_input_assembly_state_create_info.pNext = (const void*)pCreateInfo->pInputAssemblyState->pNext;
+        vk_pipeline_input_assembly_state_create_info.flags = (VkPipelineInputAssemblyStateCreateFlags)pCreateInfo->pInputAssemblyState->flags;
+        vk_pipeline_input_assembly_state_create_info.topology = (VkPrimitiveTopology)pCreateInfo->pInputAssemblyState->topology;
+        vk_pipeline_input_assembly_state_create_info.primitiveRestartEnable = (VkBool32)pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
+
+        const VkPipelineTessellationStateCreateInfo* vk_pipeline_tessellation_state_create_info_ptr = nullptr;
+        VkPipelineTessellationStateCreateInfo vk_pipeline_tessellation_state_create_info{};
+        if (pCreateInfo->pTessellationState != nullptr)
+        {
+            vk_pipeline_tessellation_state_create_info.sType = (VkStructureType)pCreateInfo->pTessellationState->sType;
+            vk_pipeline_tessellation_state_create_info.pNext = (const void*)pCreateInfo->pTessellationState->pNext;
+            vk_pipeline_tessellation_state_create_info.flags = (VkPipelineTessellationStateCreateFlags)pCreateInfo->pTessellationState->flags;
+            vk_pipeline_tessellation_state_create_info.patchControlPoints = pCreateInfo->pTessellationState->patchControlPoints;
+
+            vk_pipeline_tessellation_state_create_info_ptr = &vk_pipeline_tessellation_state_create_info;
+        }
+
+        //viewport
+        int viewport_size = pCreateInfo->pViewportState->viewportCount;
+        std::vector<VkViewport> vk_viewport_list(viewport_size);
+        for (int i = 0; i < viewport_size; ++i)
+        {
+            const auto& rhi_viewport_element = pCreateInfo->pViewportState->pViewports[i];
+            auto& vk_viewport_element = vk_viewport_list[i];
+
+            vk_viewport_element.x = rhi_viewport_element.x;
+            vk_viewport_element.y = rhi_viewport_element.y;
+            vk_viewport_element.width = rhi_viewport_element.width;
+            vk_viewport_element.height = rhi_viewport_element.height;
+            vk_viewport_element.minDepth = rhi_viewport_element.minDepth;
+            vk_viewport_element.maxDepth = rhi_viewport_element.maxDepth;
+        };
+
+        //rect_2d
+        int rect_2d_size = pCreateInfo->pViewportState->scissorCount;
+        std::vector<VkRect2D> vk_rect_2d_list(rect_2d_size);
+        for (int i = 0; i < rect_2d_size; ++i)
+        {
+            const auto& rhi_rect_2d_element = pCreateInfo->pViewportState->pScissors[i];
+            auto& vk_rect_2d_element = vk_rect_2d_list[i];
+
+            VkOffset2D offset2d{};
+            offset2d.x = rhi_rect_2d_element.offset.x;
+            offset2d.y = rhi_rect_2d_element.offset.y;
+
+            VkExtent2D extend2d{};
+            extend2d.width = rhi_rect_2d_element.extent.width;
+            extend2d.height = rhi_rect_2d_element.extent.height;
+
+            vk_rect_2d_element.offset = offset2d;
+            vk_rect_2d_element.extent = extend2d;
+        };
+
+        VkPipelineViewportStateCreateInfo vk_pipeline_viewport_state_create_info{};
+        vk_pipeline_viewport_state_create_info.sType = (VkStructureType)pCreateInfo->pViewportState->sType;
+        vk_pipeline_viewport_state_create_info.pNext = (const void*)pCreateInfo->pViewportState->pNext;
+        vk_pipeline_viewport_state_create_info.flags = (VkPipelineViewportStateCreateFlags)pCreateInfo->pViewportState->flags;
+        vk_pipeline_viewport_state_create_info.viewportCount = pCreateInfo->pViewportState->viewportCount;
+        vk_pipeline_viewport_state_create_info.pViewports = vk_viewport_list.data();
+        vk_pipeline_viewport_state_create_info.scissorCount = pCreateInfo->pViewportState->scissorCount;
+        vk_pipeline_viewport_state_create_info.pScissors = vk_rect_2d_list.data();
+
+        VkPipelineRasterizationStateCreateInfo vk_pipeline_rasterization_state_create_info{};
+        vk_pipeline_rasterization_state_create_info.sType = (VkStructureType)pCreateInfo->pRasterizationState->sType;
+        vk_pipeline_rasterization_state_create_info.pNext = (const void*)pCreateInfo->pRasterizationState->pNext;
+        vk_pipeline_rasterization_state_create_info.flags = (VkPipelineRasterizationStateCreateFlags)pCreateInfo->pRasterizationState->flags;
+        vk_pipeline_rasterization_state_create_info.depthClampEnable = (VkBool32)pCreateInfo->pRasterizationState->depthClampEnable;
+        vk_pipeline_rasterization_state_create_info.rasterizerDiscardEnable = (VkBool32)pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
+        vk_pipeline_rasterization_state_create_info.polygonMode = (VkPolygonMode)pCreateInfo->pRasterizationState->polygonMode;
+        vk_pipeline_rasterization_state_create_info.cullMode = (VkCullModeFlags)pCreateInfo->pRasterizationState->cullMode;
+        vk_pipeline_rasterization_state_create_info.frontFace = (VkFrontFace)pCreateInfo->pRasterizationState->frontFace;
+        vk_pipeline_rasterization_state_create_info.depthBiasEnable = (VkBool32)pCreateInfo->pRasterizationState->depthBiasEnable;
+        vk_pipeline_rasterization_state_create_info.depthBiasConstantFactor = pCreateInfo->pRasterizationState->depthBiasConstantFactor;
+        vk_pipeline_rasterization_state_create_info.depthBiasClamp = pCreateInfo->pRasterizationState->depthBiasClamp;
+        vk_pipeline_rasterization_state_create_info.depthBiasSlopeFactor = pCreateInfo->pRasterizationState->depthBiasSlopeFactor;
+        vk_pipeline_rasterization_state_create_info.lineWidth = pCreateInfo->pRasterizationState->lineWidth;
+
+        VkPipelineMultisampleStateCreateInfo vk_pipeline_multisample_state_create_info{};
+        vk_pipeline_multisample_state_create_info.sType = (VkStructureType)pCreateInfo->pMultisampleState->sType;
+        vk_pipeline_multisample_state_create_info.pNext = (const void*)pCreateInfo->pMultisampleState->pNext;
+        vk_pipeline_multisample_state_create_info.flags = (VkPipelineMultisampleStateCreateFlags)pCreateInfo->pMultisampleState->flags;
+        vk_pipeline_multisample_state_create_info.rasterizationSamples = (VkSampleCountFlagBits)pCreateInfo->pMultisampleState->rasterizationSamples;
+        vk_pipeline_multisample_state_create_info.sampleShadingEnable = (VkBool32)pCreateInfo->pMultisampleState->sampleShadingEnable;
+        vk_pipeline_multisample_state_create_info.minSampleShading = pCreateInfo->pMultisampleState->minSampleShading;
+        vk_pipeline_multisample_state_create_info.pSampleMask = (const RHISampleMask*)pCreateInfo->pMultisampleState->pSampleMask;
+        vk_pipeline_multisample_state_create_info.alphaToCoverageEnable = (VkBool32)pCreateInfo->pMultisampleState->alphaToCoverageEnable;
+        vk_pipeline_multisample_state_create_info.alphaToOneEnable = (VkBool32)pCreateInfo->pMultisampleState->alphaToOneEnable;
+
+        VkStencilOpState stencil_op_state_front{};
+        stencil_op_state_front.failOp = (VkStencilOp)pCreateInfo->pDepthStencilState->front.failOp;
+        stencil_op_state_front.passOp = (VkStencilOp)pCreateInfo->pDepthStencilState->front.passOp;
+        stencil_op_state_front.depthFailOp = (VkStencilOp)pCreateInfo->pDepthStencilState->front.depthFailOp;
+        stencil_op_state_front.compareOp = (VkCompareOp)pCreateInfo->pDepthStencilState->front.compareOp;
+        stencil_op_state_front.compareMask = pCreateInfo->pDepthStencilState->front.compareMask;
+        stencil_op_state_front.writeMask = pCreateInfo->pDepthStencilState->front.writeMask;
+        stencil_op_state_front.reference = pCreateInfo->pDepthStencilState->front.reference;
+
+        VkStencilOpState stencil_op_state_back{};
+        stencil_op_state_back.failOp = (VkStencilOp)pCreateInfo->pDepthStencilState->back.failOp;
+        stencil_op_state_back.passOp = (VkStencilOp)pCreateInfo->pDepthStencilState->back.passOp;
+        stencil_op_state_back.depthFailOp = (VkStencilOp)pCreateInfo->pDepthStencilState->back.depthFailOp;
+        stencil_op_state_back.compareOp = (VkCompareOp)pCreateInfo->pDepthStencilState->back.compareOp;
+        stencil_op_state_back.compareMask = pCreateInfo->pDepthStencilState->back.compareMask;
+        stencil_op_state_back.writeMask = pCreateInfo->pDepthStencilState->back.writeMask;
+        stencil_op_state_back.reference = pCreateInfo->pDepthStencilState->back.reference;
+
+
+        VkPipelineDepthStencilStateCreateInfo vk_pipeline_depth_stencil_state_create_info{};
+        vk_pipeline_depth_stencil_state_create_info.sType = (VkStructureType)pCreateInfo->pDepthStencilState->sType;
+        vk_pipeline_depth_stencil_state_create_info.pNext = (const void*)pCreateInfo->pDepthStencilState->pNext;
+        vk_pipeline_depth_stencil_state_create_info.flags = (VkPipelineDepthStencilStateCreateFlags)pCreateInfo->pDepthStencilState->flags;
+        vk_pipeline_depth_stencil_state_create_info.depthTestEnable = (VkBool32)pCreateInfo->pDepthStencilState->depthTestEnable;
+        vk_pipeline_depth_stencil_state_create_info.depthWriteEnable = (VkBool32)pCreateInfo->pDepthStencilState->depthWriteEnable;
+        vk_pipeline_depth_stencil_state_create_info.depthCompareOp = (VkCompareOp)pCreateInfo->pDepthStencilState->depthCompareOp;
+        vk_pipeline_depth_stencil_state_create_info.depthBoundsTestEnable = (VkBool32)pCreateInfo->pDepthStencilState->depthBoundsTestEnable;
+        vk_pipeline_depth_stencil_state_create_info.stencilTestEnable = (VkBool32)pCreateInfo->pDepthStencilState->stencilTestEnable;
+        vk_pipeline_depth_stencil_state_create_info.front = stencil_op_state_front;
+        vk_pipeline_depth_stencil_state_create_info.back = stencil_op_state_back;
+        vk_pipeline_depth_stencil_state_create_info.minDepthBounds = pCreateInfo->pDepthStencilState->minDepthBounds;
+        vk_pipeline_depth_stencil_state_create_info.maxDepthBounds = pCreateInfo->pDepthStencilState->maxDepthBounds;
+
+        //pipeline_color_blend_attachment_state
+        int pipeline_color_blend_attachment_state_size = pCreateInfo->pColorBlendState->attachmentCount;
+        std::vector<VkPipelineColorBlendAttachmentState> vk_pipeline_color_blend_attachment_state_list(pipeline_color_blend_attachment_state_size);
+        for (int i = 0; i < pipeline_color_blend_attachment_state_size; ++i)
+        {
+            const auto& rhi_pipeline_color_blend_attachment_state_element = pCreateInfo->pColorBlendState->pAttachments[i];
+            auto& vk_pipeline_color_blend_attachment_state_element = vk_pipeline_color_blend_attachment_state_list[i];
+
+            vk_pipeline_color_blend_attachment_state_element.blendEnable = (VkBool32)rhi_pipeline_color_blend_attachment_state_element.blendEnable;
+            vk_pipeline_color_blend_attachment_state_element.srcColorBlendFactor = (VkBlendFactor)rhi_pipeline_color_blend_attachment_state_element.srcColorBlendFactor;
+            vk_pipeline_color_blend_attachment_state_element.dstColorBlendFactor = (VkBlendFactor)rhi_pipeline_color_blend_attachment_state_element.dstColorBlendFactor;
+            vk_pipeline_color_blend_attachment_state_element.colorBlendOp = (VkBlendOp)rhi_pipeline_color_blend_attachment_state_element.colorBlendOp;
+            vk_pipeline_color_blend_attachment_state_element.srcAlphaBlendFactor = (VkBlendFactor)rhi_pipeline_color_blend_attachment_state_element.srcAlphaBlendFactor;
+            vk_pipeline_color_blend_attachment_state_element.dstAlphaBlendFactor = (VkBlendFactor)rhi_pipeline_color_blend_attachment_state_element.dstAlphaBlendFactor;
+            vk_pipeline_color_blend_attachment_state_element.alphaBlendOp = (VkBlendOp)rhi_pipeline_color_blend_attachment_state_element.alphaBlendOp;
+            vk_pipeline_color_blend_attachment_state_element.colorWriteMask = (VkColorComponentFlags)rhi_pipeline_color_blend_attachment_state_element.colorWriteMask;
+        };
+
+        VkPipelineColorBlendStateCreateInfo vk_pipeline_color_blend_state_create_info{};
+        vk_pipeline_color_blend_state_create_info.sType = (VkStructureType)pCreateInfo->pColorBlendState->sType;
+        vk_pipeline_color_blend_state_create_info.pNext = pCreateInfo->pColorBlendState->pNext;
+        vk_pipeline_color_blend_state_create_info.flags = pCreateInfo->pColorBlendState->flags;
+        vk_pipeline_color_blend_state_create_info.logicOpEnable = pCreateInfo->pColorBlendState->logicOpEnable;
+        vk_pipeline_color_blend_state_create_info.logicOp = (VkLogicOp)pCreateInfo->pColorBlendState->logicOp;
+        vk_pipeline_color_blend_state_create_info.attachmentCount = pCreateInfo->pColorBlendState->attachmentCount;
+        vk_pipeline_color_blend_state_create_info.pAttachments = vk_pipeline_color_blend_attachment_state_list.data();
+        for (int i = 0; i < 4; ++i)
+        {
+            vk_pipeline_color_blend_state_create_info.blendConstants[i] = pCreateInfo->pColorBlendState->blendConstants[i];
+        };
+
+        //dynamic_state
+        int dynamic_state_size = pCreateInfo->pDynamicState->dynamicStateCount;
+        std::vector<VkDynamicState> vk_dynamic_state_list(dynamic_state_size);
+        for (int i = 0; i < dynamic_state_size; ++i)
+        {
+            const auto& rhi_dynamic_state_element = pCreateInfo->pDynamicState->pDynamicStates[i];
+            auto& vk_dynamic_state_element = vk_dynamic_state_list[i];
+
+            vk_dynamic_state_element = (VkDynamicState)rhi_dynamic_state_element;
+        };
+
+        VkPipelineDynamicStateCreateInfo vk_pipeline_dynamic_state_create_info{};
+        vk_pipeline_dynamic_state_create_info.sType = (VkStructureType)pCreateInfo->pDynamicState->sType;
+        vk_pipeline_dynamic_state_create_info.pNext = pCreateInfo->pDynamicState->pNext;
+        vk_pipeline_dynamic_state_create_info.flags = (VkPipelineDynamicStateCreateFlags)pCreateInfo->pDynamicState->flags;
+        vk_pipeline_dynamic_state_create_info.dynamicStateCount = pCreateInfo->pDynamicState->dynamicStateCount;
+        vk_pipeline_dynamic_state_create_info.pDynamicStates = vk_dynamic_state_list.data();
+
+        VkGraphicsPipelineCreateInfo create_info{};
+        create_info.sType = (VkStructureType)pCreateInfo->sType;
+        create_info.pNext = (const void*)pCreateInfo->pNext;
+        create_info.flags = (VkPipelineCreateFlags)pCreateInfo->flags;
+        create_info.stageCount = pCreateInfo->stageCount;
+        create_info.pStages = vk_pipeline_shader_stage_create_info_list.data();
+        create_info.pVertexInputState = &vk_pipeline_vertex_input_state_create_info;
+        create_info.pInputAssemblyState = &vk_pipeline_input_assembly_state_create_info;
+        create_info.pTessellationState = vk_pipeline_tessellation_state_create_info_ptr;
+        create_info.pViewportState = &vk_pipeline_viewport_state_create_info;
+        create_info.pRasterizationState = &vk_pipeline_rasterization_state_create_info;
+        create_info.pMultisampleState = &vk_pipeline_multisample_state_create_info;
+        create_info.pDepthStencilState = &vk_pipeline_depth_stencil_state_create_info;
+        create_info.pColorBlendState = &vk_pipeline_color_blend_state_create_info;
+        create_info.pDynamicState = &vk_pipeline_dynamic_state_create_info;
+        create_info.layout = ((VulkanPipelineLayout*)pCreateInfo->layout)->getResource();
+        create_info.renderPass = ((VulkanRenderPass*)pCreateInfo->renderPass)->getResource();
+        create_info.subpass = pCreateInfo->subpass;
+        if (pCreateInfo->basePipelineHandle != nullptr)
+        {
+            create_info.basePipelineHandle = ((VulkanPipeline*)pCreateInfo->basePipelineHandle)->getResource();
+        }
+        else
+        {
+            create_info.basePipelineHandle = VK_NULL_HANDLE;
+        }
+        create_info.basePipelineIndex = pCreateInfo->basePipelineIndex;
+
+        pPipelines = new VulkanPipeline();
+        VkPipeline vk_pipelines;
+        VkPipelineCache vk_pipeline_cache = VK_NULL_HANDLE;
+        if (pipelineCache != nullptr)
+        {
+            vk_pipeline_cache = ((VulkanPipelineCache*)pipelineCache)->getResource();
+        }
+        VkResult result = vkCreateGraphicsPipelines(m_logical_device, vk_pipeline_cache, createInfoCount, &create_info, nullptr, &vk_pipelines);
+        ((VulkanPipeline*)pPipelines)->setResource(vk_pipelines);
+
+        if (result == VK_SUCCESS)
+        {
+            std::cout << "vkCreateGraphicsPipelines success!" << std::endl;
+            return RHI_SUCCESS;
+        }
+        else
+        {
+            throw std::runtime_error("vkCreateGraphicsPipelines failed!");
+            return false;
+        }
+    }
+
 
     // todo 将我们要执行的命令写入命令缓冲区:https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Command_buffers#page_Command-buffer-recording
     bool VulkanRHI::beginCommandBuffer(RHICommandBuffer* commandBuffer, const RHICommandBufferBeginInfo* pBeginInfo) {

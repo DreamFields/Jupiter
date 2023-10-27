@@ -11,6 +11,7 @@ namespace Mercury
     void DebugDrawManager::setupPipelines() {
         for (uint8_t i = 0; i < DebugDrawPipelineType::_debug_draw_pipeline_type_count; i++)
         {
+            // ! 当i==0时，会检查着色器中是否包含point size，因此只需要加上即可
             m_debug_draw_pipeline[i] = new DebugDrawPipeline((DebugDrawPipelineType)i);
             m_debug_draw_pipeline[i]->initilialize();
         }

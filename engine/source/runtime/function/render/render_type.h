@@ -1411,4 +1411,29 @@ namespace Mercury
         DEFERRED_PIPELINE,
         PIPELINE_TYPE_COUNT
     };
+
+    enum RHICompareOp : int
+    {
+        RHI_COMPARE_OP_NEVER = 0,
+        RHI_COMPARE_OP_LESS = 1,
+        RHI_COMPARE_OP_EQUAL = 2,
+        RHI_COMPARE_OP_LESS_OR_EQUAL = 3,
+        RHI_COMPARE_OP_GREATER = 4,
+        RHI_COMPARE_OP_NOT_EQUAL = 5,
+        RHI_COMPARE_OP_GREATER_OR_EQUAL = 6,
+        RHI_COMPARE_OP_ALWAYS = 7,
+        RHI_COMPARE_OP_MAX_ENUM = 0x7FFFFFFF
+    };
+
+    enum RHIStencilOp : int {
+        RHI_STENCIL_OP_KEEP = 0,
+        RHI_STENCIL_OP_ZERO = 1,
+        RHI_STENCIL_OP_REPLACE = 2,
+        RHI_STENCIL_OP_INCREMENT_AND_CLAMP = 3,
+        RHI_STENCIL_OP_DECREMENT_AND_CLAMP = 4,
+        RHI_STENCIL_OP_INVERT = 5,
+        RHI_STENCIL_OP_INCREMENT_AND_WRAP = 6,
+        RHI_STENCIL_OP_DECREMENT_AND_WRAP = 7,
+        RHI_STENCIL_OP_MAX_ENUM = 0x7FFFFFFF
+    };
 } // namespace Mercury

@@ -14,6 +14,7 @@ namespace Mercury
     class RHIShader {};
     class RHIPipeline {};
     class RHIPipelineLayout {};
+    class RHIPipelineCache {};
     class RHIRenderPass {};
     class RHIFramebuffer {};
     class RHIDeviceMemory {};
@@ -324,6 +325,41 @@ namespace Mercury
         const RHICommandBufferInheritanceInfo* pInheritanceInfo;
     };
 
+    struct RHIPipelineTessellationStateCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineTessellationStateCreateFlags flags;
+        uint32_t patchControlPoints;
+    };
+
+    struct RHIStencilOpState
+    {
+        RHIStencilOp failOp;
+        RHIStencilOp passOp;
+        RHIStencilOp depthFailOp;
+        RHICompareOp compareOp;
+        uint32_t compareMask;
+        uint32_t writeMask;
+        uint32_t reference;
+    };
+
+    struct RHIPipelineDepthStencilStateCreateInfo
+    {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIPipelineDepthStencilStateCreateFlags flags;
+        RHIBool32 depthTestEnable;
+        RHIBool32 depthWriteEnable;
+        RHICompareOp depthCompareOp;
+        RHIBool32 depthBoundsTestEnable;
+        RHIBool32 stencilTestEnable;
+        RHIStencilOpState front;
+        RHIStencilOpState back;
+        float minDepthBounds;
+        float maxDepthBounds;
+    };
+
     struct RHIGraphicsPipelineCreateInfo
     {
         RHIStructureType sType;
@@ -333,15 +369,15 @@ namespace Mercury
         const RHIPipelineShaderStageCreateInfo* pStages;
         const RHIPipelineVertexInputStateCreateInfo* pVertexInputState;
         const RHIPipelineInputAssemblyStateCreateInfo* pInputAssemblyState;
-        // const RHIPipelineTessellationStateCreateInfo* pTessellationState;
+        const RHIPipelineTessellationStateCreateInfo* pTessellationState;
         const RHIPipelineViewportStateCreateInfo* pViewportState;
         const RHIPipelineRasterizationStateCreateInfo* pRasterizationState;
         const RHIPipelineMultisampleStateCreateInfo* pMultisampleState;
-        // const RHIPipelineDepthStencilStateCreateInfo* pDepthStencilState;
+        const RHIPipelineDepthStencilStateCreateInfo* pDepthStencilState;
         const RHIPipelineColorBlendStateCreateInfo* pColorBlendState;
         const RHIPipelineDynamicStateCreateInfo* pDynamicState;
         RHIPipelineLayout* layout;
-        // RHIRenderPass* renderPass;
+        RHIRenderPass* renderPass;
         uint32_t subpass;
         RHIPipeline* basePipelineHandle;
         int32_t basePipelineIndex;
