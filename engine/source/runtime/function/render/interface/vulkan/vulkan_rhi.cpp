@@ -353,9 +353,12 @@ namespace Mercury
             }
         }
 
-        // todo
+        // !必须在此处初始化函数指针，否则无法正常调用
         if (m_enable_debug_utils_label) {
-
+            _vkCmdBeginDebugUtilsLabelEXT =
+                (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(m_instance, "vkCmdBeginDebugUtilsLabelEXT");
+            _vkCmdEndDebugUtilsLabelEXT =
+                (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(m_instance, "vkCmdEndDebugUtilsLabelEXT");
         }
     }
 
@@ -607,7 +610,25 @@ namespace Mercury
         m_compute_queue = new VulkanQueue(); // 指向子类对象
         ((VulkanQueue*)m_compute_queue)->setResource(vk_compute_queue);
 
-        // todo more efficient pointer
+        // more efficient pointer
+        // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetDeviceProcAddr.html
+        // 通过为任何使用设备或设备子对象作为可调度对象的命令获取特定于设备的函数指针，可以避免 VkDevice 对象内部调度的开销。
+        _vkResetCommandPool = (PFN_vkResetCommandPool)vkGetDeviceProcAddr(m_logical_device, "vkResetCommandPool");
+        _vkBeginCommandBuffer = (PFN_vkBeginCommandBuffer)vkGetDeviceProcAddr(m_logical_device, "vkBeginCommandBuffer");
+        _vkEndCommandBuffer = (PFN_vkEndCommandBuffer)vkGetDeviceProcAddr(m_logical_device, "vkEndCommandBuffer");
+        _vkCmdBeginRenderPass = (PFN_vkCmdBeginRenderPass)vkGetDeviceProcAddr(m_logical_device, "vkCmdBeginRenderPass");
+        _vkCmdNextSubpass = (PFN_vkCmdNextSubpass)vkGetDeviceProcAddr(m_logical_device, "vkCmdNextSubpass");
+        _vkCmdEndRenderPass = (PFN_vkCmdEndRenderPass)vkGetDeviceProcAddr(m_logical_device, "vkCmdEndRenderPass");
+        _vkCmdBindPipeline = (PFN_vkCmdBindPipeline)vkGetDeviceProcAddr(m_logical_device, "vkCmdBindPipeline");
+        _vkCmdSetViewport = (PFN_vkCmdSetViewport)vkGetDeviceProcAddr(m_logical_device, "vkCmdSetViewport");
+        _vkCmdSetScissor = (PFN_vkCmdSetScissor)vkGetDeviceProcAddr(m_logical_device, "vkCmdSetScissor");
+        _vkWaitForFences = (PFN_vkWaitForFences)vkGetDeviceProcAddr(m_logical_device, "vkWaitForFences");
+        _vkResetFences = (PFN_vkResetFences)vkGetDeviceProcAddr(m_logical_device, "vkResetFences");
+        _vkCmdDrawIndexed = (PFN_vkCmdDrawIndexed)vkGetDeviceProcAddr(m_logical_device, "vkCmdDrawIndexed");
+        _vkCmdBindVertexBuffers = (PFN_vkCmdBindVertexBuffers)vkGetDeviceProcAddr(m_logical_device, "vkCmdBindVertexBuffers");
+        _vkCmdBindIndexBuffer = (PFN_vkCmdBindIndexBuffer)vkGetDeviceProcAddr(m_logical_device, "vkCmdBindIndexBuffer");
+        _vkCmdBindDescriptorSets = (PFN_vkCmdBindDescriptorSets)vkGetDeviceProcAddr(m_logical_device, "vkCmdBindDescriptorSets");
+        _vkCmdClearAttachments = (PFN_vkCmdClearAttachments)vkGetDeviceProcAddr(m_logical_device, "vkCmdClearAttachments");
 
         // 找到支持的深度缓冲格式: https://vulkan-tutorial.com/Depth_buffering
         // 应该具有与颜色附件相同的分辨率(由交换链范围定义) ，适用于深度附件、最佳拼接和设备本地内存的图像使用
@@ -718,13 +739,355 @@ namespace Mercury
         std::cout << "allocate command buffers success!" << std::endl;
     }
 
+    bool VulkanRHI::prepareBeforePass(std::function<void()> passUpdateAfterRecreateSwapchain)
+    {
+        // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Rendering_and_presentation#page_Acquiring-an-image-from-the-swap-chain
+        VkResult acquire_image_result =
+            vkAcquireNextImageKHR(m_logical_device,
+                m_swapchain,
+                UINT64_MAX,
+                m_image_available_for_render_semaphores[m_current_frame_index],
+                VK_NULL_HANDLE,
+                &m_current_swapchain_image_index);
+
+        if (VK_ERROR_OUT_OF_DATE_KHR == acquire_image_result)
+        {
+            recreateSwapchain();
+            passUpdateAfterRecreateSwapchain();
+            return RHI_SUCCESS;
+        }
+        else if (VK_SUBOPTIMAL_KHR == acquire_image_result)
+        {
+            recreateSwapchain();
+            passUpdateAfterRecreateSwapchain();
+
+
+            VkSubmitInfo         submit_info = {};
+            submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+            VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
+            submit_info.waitSemaphoreCount = 1;
+            submit_info.pWaitSemaphores = &m_image_available_for_render_semaphores[m_current_frame_index];
+            submit_info.pWaitDstStageMask = wait_stages;
+            submit_info.commandBufferCount = 0;
+            submit_info.pCommandBuffers = NULL;
+            submit_info.signalSemaphoreCount = 0;
+            submit_info.pSignalSemaphores = NULL;
+
+            VkResult res_reset_fences = _vkResetFences(m_logical_device, 1, &m_is_frame_in_flight_fences[m_current_frame_index]);
+            if (VK_SUCCESS != res_reset_fences)
+            {
+                throw std::runtime_error("_vkResetFences failed!");
+                return false;
+            }
+
+            VkResult res_queue_submit =
+                vkQueueSubmit(((VulkanQueue*)m_graphics_queue)->getResource(), 1, &submit_info, m_is_frame_in_flight_fences[m_current_frame_index]);
+            if (VK_SUCCESS != res_queue_submit)
+            {
+                throw std::runtime_error("vkQueueSubmit failed!");
+                return false;
+            }
+            m_current_frame_index = (m_current_frame_index + 1) % k_max_frames_in_flight;
+            return RHI_SUCCESS;
+        }
+        else
+        {
+            if (VK_SUCCESS != acquire_image_result)
+            {
+                throw std::runtime_error("vkAcquireNextImageKHR failed!");
+                return false;
+            }
+        }
+
+        // recordCommandBuffer command buffer
+        // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Command_buffers#page_Command-buffer-recording
+        VkCommandBufferBeginInfo command_buffer_begin_info{};
+        command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        command_buffer_begin_info.flags = 0; // Optional
+        command_buffer_begin_info.pInheritanceInfo = nullptr; // Optional
+
+        VkResult res_begin_command_buffer =
+            _vkBeginCommandBuffer(m_vk_command_buffers[m_current_frame_index], &command_buffer_begin_info);
+        if (VK_SUCCESS != res_begin_command_buffer)
+        {
+            throw std::runtime_error("_vkBeginCommandBuffer failed!");
+            return false;
+        }
+        return false;
+    }
+
+    void VulkanRHI::submitRendering(std::function<void()> passUpdateAfterRecreateSwapchain)
+    {
+        // end command buffer
+        VkResult res_end_command_buffer = _vkEndCommandBuffer(m_vk_command_buffers[m_current_frame_index]);
+        if (VK_SUCCESS != res_end_command_buffer)
+        {
+            throw std::runtime_error("_vkEndCommandBuffer failed!");
+            return;
+        }
+
+        // 信号量 Semaphores
+        VkSemaphore semaphores[1] = {
+            //((VulkanSemaphore*)m_image_available_for_texturescopy_semaphores[m_current_frame_index])->getResource(),
+            m_image_finished_for_presentation_semaphores[m_current_frame_index] };
+
+        // Submitting the command buffer:https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Rendering_and_presentation#page_Submitting-the-command-buffer
+        VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        VkSubmitInfo         submit_info = {};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        /*
+        前三个参数指定了执行开始前要等待的 Semaphores，以及要等待的流水线阶段。
+        我们希望等待将颜色写入图像，直到图像可用为止，因此我们指定了图形流水线中写入颜色附件的阶段。
+        这意味着理论上，当图像尚未可用时，执行程序已经可以开始执行顶点着色器等程序。waitStages 数组中的每个条目都与 pWaitSemaphores 中具有相同索引的信号对应。
+        */
+        submit_info.waitSemaphoreCount = 1;
+        submit_info.pWaitSemaphores = &m_image_available_for_render_semaphores[m_current_frame_index];
+        submit_info.pWaitDstStageMask = wait_stages;
+        /* 接下来的两个参数指定了要实际提交执行的命令缓冲区。我们只需提交现有的单个命令缓冲区。 */
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &m_vk_command_buffers[m_current_frame_index];
+        /* signalSemaphoreCount 和 pSignalSemaphores 参数指定一旦命令缓冲区执行完毕，要向哪些 semaphore 发送信号。 */
+        submit_info.signalSemaphoreCount = 1;
+        submit_info.pSignalSemaphores = semaphores;
+
+        VkResult res_reset_fences = _vkResetFences(m_logical_device, 1, &m_is_frame_in_flight_fences[m_current_frame_index]);
+
+        if (VK_SUCCESS != res_reset_fences)
+        {
+            throw std::runtime_error("_vkResetFences failed!");
+            return;
+        }
+        /*
+        使用 vkQueueSubmit 将命令缓冲区提交到图形队列。
+        该函数使用 VkSubmitInfo 结构数组作为参数，以便在工作量较大时提高效率。
+        最后一个参数引用了一个可选的栅栏，该栅栏将在命令缓冲区执行完毕时发出信号。这样我们就能知道何时可以安全地重复使用命令缓冲区，因此我们希望赋予它 inFlightFence。
+        现在，在下一帧中，CPU 将等待命令缓冲区执行完毕，然后再向其中记录新命令。 */
+        VkResult res_queue_submit = vkQueueSubmit(((VulkanQueue*)m_graphics_queue)->getResource(), 1, &submit_info, m_is_frame_in_flight_fences[m_current_frame_index]);
+        if (VK_SUCCESS != res_queue_submit)
+        {
+            throw std::runtime_error("vkQueueSubmit failed!");
+            return;
+        }
+
+        // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Rendering_and_presentation#page_Presentation
+        // 绘制帧的最后一步是将结果提交回交换链，使其最终显示在屏幕上。
+        VkPresentInfoKHR present_info = {};
+        present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        /*
+        前两个参数指定了在呈现之前需要等待的信号。由于我们希望等待命令缓冲区执行完毕，从而绘制三角形，因此我们使用 signalSemaphores 来获取将要发出信号的 Semaphores 并等待它们
+         */
+        present_info.waitSemaphoreCount = 1;
+        present_info.pWaitSemaphores = &m_image_finished_for_presentation_semaphores[m_current_frame_index];
+        /* 接下来的两个参数指定了要提交图像的交换链，以及每个交换链的图像索引。 */
+        present_info.swapchainCount = 1;
+        present_info.pSwapchains = &m_swapchain;
+        present_info.pImageIndices = &m_current_swapchain_image_index;
+
+        VkResult present_result = vkQueuePresentKHR(m_present_queue, &present_info);
+        if (VK_ERROR_OUT_OF_DATE_KHR == present_result || VK_SUBOPTIMAL_KHR == present_result)
+        {
+            recreateSwapchain();
+            passUpdateAfterRecreateSwapchain();
+        }
+        else
+        {
+            if (VK_SUCCESS != present_result)
+            {
+                throw std::runtime_error("vkQueuePresentKHR failed!");
+                return;
+            }
+        }
+
+        m_current_frame_index = (m_current_frame_index + 1) % k_max_frames_in_flight;
+    }
+
+    void VulkanRHI::pushEvent(RHICommandBuffer* command_buffer, const char* name, const float* color) {
+        if (m_enable_debug_utils_label) {
+            VkDebugUtilsLabelEXT label_info;
+            label_info.pNext = nullptr;
+            label_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+            label_info.pLabelName = name;
+            for (int i = 0; i < 4; ++i) {
+                label_info.color[i] = color[i];
+            }
+            VkCommandBuffer res = ((VulkanCommandBuffer*)command_buffer)->getResource();
+            _vkCmdBeginDebugUtilsLabelEXT(res, &label_info);
+        }
+    }
+
+    void VulkanRHI::popEvent(RHICommandBuffer* command_buffer) {
+        if (m_enable_debug_utils_label) {
+            _vkCmdEndDebugUtilsLabelEXT(((VulkanCommandBuffer*)command_buffer)->getResource());
+        }
+    }
+
+    void VulkanRHI::cmdSetViewportPFN(RHICommandBuffer* commandBuffer, uint32_t firstViewport, uint32_t viewportCount, const RHIViewport* pViewports) {
+        // viewprot
+        int viewport_size = viewportCount;
+        std::vector<VkViewport> vk_viewport_list(viewport_size);
+        for (int i = 0; i < viewport_size; i++)
+        {
+            const auto& rhi_viewport_element = pViewports[i];
+            auto& vk_viewport_element = vk_viewport_list[i];
+
+            vk_viewport_element.x = rhi_viewport_element.x;
+            vk_viewport_element.y = rhi_viewport_element.y;
+            vk_viewport_element.width = rhi_viewport_element.width;
+            vk_viewport_element.height = rhi_viewport_element.height;
+            vk_viewport_element.minDepth = rhi_viewport_element.minDepth;
+            vk_viewport_element.maxDepth = rhi_viewport_element.maxDepth;
+        }
+        return _vkCmdSetViewport(((VulkanCommandBuffer*)commandBuffer)->getResource(), firstViewport, viewportCount, vk_viewport_list.data());
+    }
+
+    void VulkanRHI::cmdSetScissorPFN(RHICommandBuffer* commandBuffer, uint32_t firstScissor, uint32_t scissorCount, const RHIRect2D* pScissors)
+    {
+        //rect_2d
+        int rect_2d_size = scissorCount;
+        std::vector<VkRect2D> vk_rect_2d_list(rect_2d_size);
+        for (int i = 0; i < rect_2d_size; ++i)
+        {
+            const auto& rhi_rect_2d_element = pScissors[i];
+            auto& vk_rect_2d_element = vk_rect_2d_list[i];
+
+            VkOffset2D offset_2d{};
+            offset_2d.x = rhi_rect_2d_element.offset.x;
+            offset_2d.y = rhi_rect_2d_element.offset.y;
+
+            VkExtent2D extent_2d{};
+            extent_2d.width = rhi_rect_2d_element.extent.width;
+            extent_2d.height = rhi_rect_2d_element.extent.height;
+
+            vk_rect_2d_element.offset = (VkOffset2D)offset_2d;
+            vk_rect_2d_element.extent = (VkExtent2D)extent_2d;
+
+        };
+
+        return _vkCmdSetScissor(((VulkanCommandBuffer*)commandBuffer)->getResource(), firstScissor, scissorCount, vk_rect_2d_list.data());
+    }
+
     void VulkanRHI::createDescriptorPool()
     {
     }
 
-    void VulkanRHI::createSyncPrimitives()
-    {
+    // semaphore : signal an image is ready for rendering // ready for presentation
+    // (m_vulkan_context._swapchain_images --> semaphores, fences)
+    // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Rendering_and_presentation#page_Creating-the-synchronization-objects
+    // 有两个地方可以方便地应用同步：交换链操作(semaphores)和等待上一帧完成(fences)。
+    void VulkanRHI::createSyncPrimitives() {
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // the fence is initialized as signaled
+        /*
+        在第一帧中，我们调用了 drawFrame()，它会立即等待 inFlightFence 发出信号。inFlightFence 只有在一帧完成渲染后才会发出信号，但由于这是第一帧，所以没有前几帧可以发出信号！因此，vkWaitForFences() 会无限期地阻塞，等待永远不会发生的事情。
+        在解决这一难题的众多方案中，API 中内置了一个巧妙的变通方法。在已发出信号的状态下创建栅栏，这样第一次调用 vkWaitForFences() 就会立即返回，因为栅栏已发出信号。
+         */
+
+        for (uint32_t i = 0; i < k_max_frames_in_flight; i++)
+        {
+            if (vkCreateSemaphore(m_logical_device, &semaphoreInfo, nullptr, &m_image_available_for_render_semaphores[i]) != VK_SUCCESS ||
+                vkCreateSemaphore(m_logical_device, &semaphoreInfo, nullptr, &m_image_finished_for_presentation_semaphores[i]) != VK_SUCCESS ||
+                //vkCreateSemaphore(m_logical_device, &semaphoreInfo, nullptr, &(((VulkanSemaphore*)m_image_available_for_texturescopy_semaphores[i])->getResource())) != VK_SUCCESS ||
+                vkCreateFence(m_logical_device, &fenceInfo, nullptr, &m_is_frame_in_flight_fences[i]) != VK_SUCCESS) {
+                throw std::runtime_error("failed to create semaphores & fences!");
+            }
+            m_rhi_is_frame_in_flight_fences[i] = new VulkanFence();
+            ((VulkanFence*)m_rhi_is_frame_in_flight_fences[i])->setResource(m_is_frame_in_flight_fences[i]);
+        }
     }
+
+    // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Rendering_and_presentation#page_Waiting-for-the-previous-frame
+    void VulkanRHI::waitForFences() {
+        // vkWaitForFences 函数接收一个围栏数组，并在主机上等待任何或所有围栏发出信号后返回。
+        // 传递的 VK_TRUE 表示我们要等待所有围栏
+        // 超时参数，我们将其设置为 64 位无符号整数 UINT64_MAX 的最大值，这样就有效地禁用了超时。
+        VkResult res_wait_for_fences = _vkWaitForFences(m_logical_device, 1, &m_is_frame_in_flight_fences[m_current_frame_index], VK_TRUE, UINT64_MAX);
+        if (VK_SUCCESS != res_wait_for_fences) {
+            throw std::runtime_error("failed to synchronize!");
+        }
+    }
+
+    void VulkanRHI::resetCommandPool()
+    {
+        VkResult res_reset_command_pool = _vkResetCommandPool(m_logical_device, m_command_pools[m_current_frame_index], 0);
+        if (VK_SUCCESS != res_reset_command_pool)
+        {
+            throw std::runtime_error("failed to synchronize");
+        }
+    }
+
+    void VulkanRHI::cmdBeginRenderPassPFN(RHICommandBuffer* commandBuffer, const RHIRenderPassBeginInfo* pRenderPassBegin, RHISubpassContents contents) {
+        VkOffset2D offset_2d{};
+        offset_2d.x = pRenderPassBegin->renderArea.offset.x;
+        offset_2d.y = pRenderPassBegin->renderArea.offset.y;
+
+        VkExtent2D extent_2d{};
+        extent_2d.width = pRenderPassBegin->renderArea.extent.width;
+        extent_2d.height = pRenderPassBegin->renderArea.extent.height;
+
+        VkRect2D rect_2d{};
+        rect_2d.offset = offset_2d;
+        rect_2d.extent = extent_2d;
+
+        //clear values：有可能包括深度、模板的数据
+        int clear_value_size = pRenderPassBegin->clearValueCount;
+        std::vector<VkClearValue> vk_clear_value_list(clear_value_size);
+        for (int i = 0; i < clear_value_size; ++i)
+        {
+            const auto& rhi_clear_value_element = pRenderPassBegin->pClearValues[i];
+            auto& vk_clear_value_element = vk_clear_value_list[i];
+
+            VkClearColorValue vk_clear_color_value;
+            vk_clear_color_value.float32[0] = rhi_clear_value_element.color.float32[0];
+            vk_clear_color_value.float32[1] = rhi_clear_value_element.color.float32[1];
+            vk_clear_color_value.float32[2] = rhi_clear_value_element.color.float32[2];
+            vk_clear_color_value.float32[3] = rhi_clear_value_element.color.float32[3];
+            vk_clear_color_value.int32[0] = rhi_clear_value_element.color.int32[0];
+            vk_clear_color_value.int32[1] = rhi_clear_value_element.color.int32[1];
+            vk_clear_color_value.int32[2] = rhi_clear_value_element.color.int32[2];
+            vk_clear_color_value.int32[3] = rhi_clear_value_element.color.int32[3];
+            vk_clear_color_value.uint32[0] = rhi_clear_value_element.color.uint32[0];
+            vk_clear_color_value.uint32[1] = rhi_clear_value_element.color.uint32[1];
+            vk_clear_color_value.uint32[2] = rhi_clear_value_element.color.uint32[2];
+            vk_clear_color_value.uint32[3] = rhi_clear_value_element.color.uint32[3];
+
+            VkClearDepthStencilValue vk_clear_depth_stencil_value;
+            vk_clear_depth_stencil_value.depth = rhi_clear_value_element.depthStencil.depth;
+            vk_clear_depth_stencil_value.stencil = rhi_clear_value_element.depthStencil.stencil;
+
+            vk_clear_value_element.color = vk_clear_color_value;
+            vk_clear_value_element.depthStencil = vk_clear_depth_stencil_value;
+
+        };
+
+        VkRenderPassBeginInfo vk_render_pass_begin_info{};
+        vk_render_pass_begin_info.sType = (VkStructureType)pRenderPassBegin->sType;
+        vk_render_pass_begin_info.pNext = pRenderPassBegin->pNext;
+        vk_render_pass_begin_info.renderPass = ((VulkanRenderPass*)pRenderPassBegin->renderPass)->getResource();
+        vk_render_pass_begin_info.framebuffer = ((VulkanFramebuffer*)pRenderPassBegin->framebuffer)->getResource();
+        vk_render_pass_begin_info.renderArea = rect_2d;
+        vk_render_pass_begin_info.clearValueCount = pRenderPassBegin->clearValueCount;
+        vk_render_pass_begin_info.pClearValues = vk_clear_value_list.data();
+
+        return _vkCmdBeginRenderPass(((VulkanCommandBuffer*)commandBuffer)->getResource(), &vk_render_pass_begin_info, (VkSubpassContents)contents);
+    }
+
+    void VulkanRHI::cmdBindPipelinePFN(RHICommandBuffer* commandBuffer, RHIPipelineBindPoint pipelineBindPoint, RHIPipeline* pipeline) {
+        return _vkCmdBindPipeline(((VulkanCommandBuffer*)commandBuffer)->getResource(), (VkPipelineBindPoint)pipelineBindPoint, ((VulkanPipeline*)pipeline)->getResource());
+    }
+
+    void VulkanRHI::cmdEndRenderPassPFN(RHICommandBuffer* commandBuffer) {
+        return _vkCmdEndRenderPass(((VulkanCommandBuffer*)commandBuffer)->getResource());
+    }
+
+    void VulkanRHI::cmdDraw(RHICommandBuffer* commandBuffer, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) {
+        vkCmdDraw(((VulkanCommandBuffer*)commandBuffer)->getResource(), vertexCount, instanceCount, firstVertex, firstInstance);
+    }
+
 
     void VulkanRHI::createAssetAllocator()
     {
@@ -1304,6 +1667,39 @@ namespace Mercury
         }
     }
 
+    void VulkanRHI::recreateSwapchain() {
+        int width = 0;
+        int height = 0;
+        glfwGetFramebufferSize(m_window, &width, &height);
+        while (width == 0 || height == 0) { // minimized 0,0, pause for now
+            glfwGetFramebufferSize(m_window, &width, &height);
+            glfwWaitEvents();
+        }
+
+        // 如果CPU(主机)需要知道 GPU 完成了什么工作，我们就需要使用栅栏(Fences)
+        // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Rendering_and_presentation#page_Fences
+        // 这里等待上一帧渲染完成之后，CPU再绘制下一帧，等价于VulkanRHI::waitForFences()函数
+        VkResult res_wait_for_fences = _vkWaitForFences(m_logical_device, k_max_frames_in_flight, m_is_frame_in_flight_fences, VK_TRUE, UINT64_MAX);
+        if (VK_SUCCESS != res_wait_for_fences)
+        {
+            throw std::runtime_error("_vkWaitForFences failed");
+            return;
+        }
+
+        destroyImageView(m_depth_image_view);
+        vkDestroyImage(m_logical_device, ((VulkanImage*)m_depth_image)->getResource(), NULL);
+        vkFreeMemory(m_logical_device, m_depth_image_memory, NULL);
+
+        for (auto imageview : m_swapchain_imageviews)
+        {
+            vkDestroyImageView(m_logical_device, ((VulkanImageView*)imageview)->getResource(), NULL);
+        }
+        vkDestroySwapchainKHR(m_logical_device, m_swapchain, NULL);
+
+        createSwapchain();
+        createSwapchainImageViews();
+        createFramebufferImageAndView();
+    }
 
     // todo 将我们要执行的命令写入命令缓冲区:https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Command_buffers#page_Command-buffer-recording
     bool VulkanRHI::beginCommandBuffer(RHICommandBuffer* commandBuffer, const RHICommandBufferBeginInfo* pBeginInfo) {
@@ -1329,6 +1725,11 @@ namespace Mercury
 #endif
 
         return extensions;
+    }
+
+    RHICommandBuffer* VulkanRHI::getCurrentCommandBuffer() const
+    {
+        return m_current_command_buffer;
     }
 
     RHISwapChainDesc VulkanRHI::getSwapchainInfo() {
@@ -1362,6 +1763,11 @@ namespace Mercury
     {
         vkDestroyShaderModule(m_logical_device, ((VulkanShader*)shaderModule)->getResource(), nullptr);
         delete(shaderModule);
+    }
+
+    void VulkanRHI::destroyFramebuffer(RHIFramebuffer* framebuffer)
+    {
+        vkDestroyFramebuffer(m_logical_device, ((VulkanFramebuffer*)framebuffer)->getResource(), nullptr);
     }
 } // namespace Mercury
 

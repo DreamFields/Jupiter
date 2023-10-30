@@ -20,6 +20,8 @@ namespace Mercury
     class RHIDeviceMemory {};
     class RHICommandPool {};
     class RHICommandBuffer {};
+    class RHISemaphore {};
+    class RHIFence {};
 
     //////////////////////struct/////////////////
     struct RHIViewport
@@ -381,6 +383,32 @@ namespace Mercury
         uint32_t subpass;
         RHIPipeline* basePipelineHandle;
         int32_t basePipelineIndex;
+    };
+
+    struct RHIClearDepthStencilValue {
+        float depth;
+        uint32_t stencil;
+    };
+
+    union RHIClearColorValue {
+        float float32[4];
+        int32_t int32[4];
+        uint32_t uint32[4];
+    };
+
+    union RHIClearValue {
+        RHIClearColorValue color;
+        RHIClearDepthStencilValue depthStencil;
+    };
+
+    struct RHIRenderPassBeginInfo {
+        RHIStructureType sType;
+        const void* pNext;
+        RHIRenderPass* renderPass;
+        RHIFramebuffer* framebuffer;
+        RHIRect2D renderArea;
+        uint32_t clearValueCount;
+        const RHIClearValue* pClearValues;
     };
 } // namespace Mercury
 

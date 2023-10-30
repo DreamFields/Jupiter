@@ -16,6 +16,7 @@ namespace Mercury
         void preparePassData(std::shared_ptr<RenderResourceBase> render_resource);
 
         void draw(uint32_t current_swapchain_image_index);
+        void updateAfterRecreateSwapchain();
 
     private:
         std::shared_ptr<RHI> m_rhi = nullptr;
@@ -23,5 +24,6 @@ namespace Mercury
 
         void swapDataToRender();
         void drawDebugObject(uint32_t current_swapchain_image_index);
+        void debugSimpleTriangle(uint32_t current_swapchain_image_index);
     };
 } // namespace Mercury

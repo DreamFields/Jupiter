@@ -49,6 +49,10 @@ namespace Mercury
         void setupRenderPass();
         void setupFramebuffer();
         void setupDescriptorLayout();
+        void recreateAfterSwapchain();
+        const DebugDrawFramebuffer &getFramebuffer() const;
+        const DebugDrawPipelineBase &getPipeline() const;
+
     private:
         void setupPipelines();
         std::shared_ptr<RHI> m_rhi;

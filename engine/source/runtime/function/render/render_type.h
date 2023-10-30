@@ -1436,4 +1436,10 @@ namespace Mercury
         RHI_STENCIL_OP_DECREMENT_AND_WRAP = 7,
         RHI_STENCIL_OP_MAX_ENUM = 0x7FFFFFFF
     };
+
+    enum RHISubpassContents {
+        RHI_SUBPASS_CONTENTS_INLINE = 0,
+        RHI_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS = 1,
+        RHI_SUBPASS_CONTENTS_MAX_ENUM = 0x7FFFFFFF
+    };
 } // namespace Mercury

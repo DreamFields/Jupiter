@@ -173,4 +173,32 @@ namespace Mercury
     private:
         VkPipelineCache m_resource;
     };
+    class VulkanSemaphore : public RHISemaphore
+    {
+    public:
+        void setResource(VkSemaphore res)
+        {
+            m_resource = res;
+        }
+        VkSemaphore& getResource()
+        {
+            return m_resource;
+        }
+    private:
+        VkSemaphore m_resource;
+    };
+    class VulkanFence : public RHIFence
+    {
+    public:
+        void setResource(VkFence res)
+        {
+            m_resource = res;
+        }
+        VkFence getResource() const
+        {
+            return m_resource;
+        }
+    private:
+        VkFence m_resource;
+    };
 } // namespace Mercury

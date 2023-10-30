@@ -251,7 +251,7 @@ namespace Mercury
         // uniform是类似于动态状态变量的全局变量，可以在绘制时更改这些变量，以更改着色器的行为，而无需重新创建它们。 它们通常用于将变换矩阵传递到顶点着色器，或在片段着色器中创建纹理采样器。
         RHIPipelineLayoutCreateInfo pipeline_layout_create_info{};
         pipeline_layout_create_info.sType = RHI_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipeline_layout_create_info.setLayoutCount = 0; 
+        pipeline_layout_create_info.setLayoutCount = 0;
         // pipeline_layout_create_info.pSetLayouts = &m_descriptor_layout; // todo set layout descriptor
         pipeline_layout_create_info.pushConstantRangeCount = 0;
         pipeline_layout_create_info.pPushConstantRanges = nullptr;
@@ -322,5 +322,25 @@ namespace Mercury
 
         m_rhi->destroyShaderModule(vert_shader_module);
         m_rhi->destroyShaderModule(frag_shader_module);
+    }
+
+    void DebugDrawPipeline::recreateAfterSwapchain()
+    {
+        for (auto framebuffer : m_framebuffer.framebuffers)
+        {
+            m_rhi->destroyFramebuffer(framebuffer);
+        }
+
+        setupFramebuffer();
+    }
+
+    const DebugDrawFramebuffer& DebugDrawPipeline::getFramebuffer() const
+    {
+        return m_framebuffer;
+    }
+
+    const DebugDrawPipelineBase& DebugDrawPipeline::getPipeline() const
+    {
+        return m_render_pipelines[0];
     }
 } // namespace Mercury

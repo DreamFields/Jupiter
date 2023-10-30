@@ -29,22 +29,37 @@ namespace Mercury
         bool createPipelineLayout(const RHIPipelineLayoutCreateInfo* pCreateInfo, RHIPipelineLayout*& pPipelineLayout) override;
         bool createRenderPass(const RHIRenderPassCreateInfo* pCreateInfo, RHIRenderPass*& pRenderPass) override;
         bool createFrameBuffer(const RHIFramebufferCreateInfo* pCreateInfo, RHIFramebuffer*& pFramebuffer) override;
-        bool createGraphicsPipelines(RHIPipelineCache* pipelineCache, uint32_t createInfoCount, const RHIGraphicsPipelineCreateInfo* pCreateInfos, RHIPipeline* &pPipelines) override;
+        bool createGraphicsPipelines(RHIPipelineCache* pipelineCache, uint32_t createInfoCount, const RHIGraphicsPipelineCreateInfo* pCreateInfos, RHIPipeline*& pPipelines) override;
+        void recreateSwapchain() override;
 
         // command and write
         bool beginCommandBuffer(RHICommandBuffer* commandBuffer, const RHICommandBufferBeginInfo* pBeginInfo) override;
+        bool prepareBeforePass(std::function<void()> passUpdateAfterRecreateSwapchain) override;
+        void submitRendering(std::function<void()> passUpdateAfterRecreateSwapchain) override;
+        void pushEvent(RHICommandBuffer* commond_buffer, const char* name, const float* color) override;
+        void popEvent(RHICommandBuffer* commond_buffer) override;
+        void cmdSetViewportPFN(RHICommandBuffer* commandBuffer, uint32_t firstViewport, uint32_t viewportCount, const RHIViewport* pViewports) override;
+        void cmdSetScissorPFN(RHICommandBuffer* commandBuffer, uint32_t firstScissor, uint32_t scissorCount, const RHIRect2D* pScissors) override;
+        void waitForFences() override;
+        void resetCommandPool() override;
+        void cmdBeginRenderPassPFN(RHICommandBuffer* commandBuffer, const RHIRenderPassBeginInfo* pRenderPassBegin, RHISubpassContents contents) override;
+        void cmdBindPipelinePFN(RHICommandBuffer* commandBuffer, RHIPipelineBindPoint pipelineBindPoint, RHIPipeline* pipeline) override;
+        void cmdEndRenderPassPFN(RHICommandBuffer* commandBuffer) override;
+        void cmdDraw(RHICommandBuffer* commandBuffer, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) override;
 
         // query
         RHISwapChainDesc getSwapchainInfo() override;
         RHIDepthImageDesc getDepthImageInfo() override;
+        RHICommandBuffer* getCurrentCommandBuffer() const override;
 
         // destroy
         void destroyDevice() override;
         void destroyImageView(RHIImageView* imageView) override;
         void destroyShaderModule(RHIShader* shaderModule) override;
+        void destroyFramebuffer(RHIFramebuffer* framebuffer) override;
 
     public:
-        static uint8_t const k_max_frames_in_flight{ 3 };
+        static uint8_t const k_max_frames_in_flight{ 3 }; // 定义并发处理的帧数
 
         GLFWwindow* m_window{ nullptr };
         RHIViewport m_viewport;
@@ -75,8 +90,33 @@ namespace Mercury
         VkCommandPool   m_command_pools[k_max_frames_in_flight];
         VkCommandBuffer m_vk_command_buffers[k_max_frames_in_flight];
         VkCommandBuffer m_vk_current_command_buffer;
+        VkSemaphore m_image_available_for_render_semaphores[k_max_frames_in_flight]; // 提示从 swapchain 获取图像并准备渲染
+        VkSemaphore m_image_finished_for_presentation_semaphores[k_max_frames_in_flight]; // 提示渲染已完成并可以进行presentation
+        RHISemaphore* m_image_available_for_texturescopy_semaphores[k_max_frames_in_flight];// 提示从 swapchain 获取图像并准备纹理拷贝
+        VkFence m_is_frame_in_flight_fences[k_max_frames_in_flight]; // 栅栏来确保一次只渲染一帧图像
+        RHIFence* m_rhi_is_frame_in_flight_fences[k_max_frames_in_flight];
         uint8_t m_current_frame_index{ 0 };
         uint32_t m_current_swapchain_image_index{ 0 }; // todo set
+
+        // function pointers
+        PFN_vkCmdBeginDebugUtilsLabelEXT _vkCmdBeginDebugUtilsLabelEXT;
+        PFN_vkCmdEndDebugUtilsLabelEXT   _vkCmdEndDebugUtilsLabelEXT;
+        PFN_vkWaitForFences         _vkWaitForFences;
+        PFN_vkResetFences           _vkResetFences;
+        PFN_vkResetCommandPool      _vkResetCommandPool;
+        PFN_vkBeginCommandBuffer    _vkBeginCommandBuffer;
+        PFN_vkEndCommandBuffer      _vkEndCommandBuffer;
+        PFN_vkCmdBeginRenderPass    _vkCmdBeginRenderPass;
+        PFN_vkCmdNextSubpass        _vkCmdNextSubpass;
+        PFN_vkCmdEndRenderPass      _vkCmdEndRenderPass;
+        PFN_vkCmdBindPipeline       _vkCmdBindPipeline;
+        PFN_vkCmdSetViewport        _vkCmdSetViewport;
+        PFN_vkCmdSetScissor         _vkCmdSetScissor;
+        PFN_vkCmdBindVertexBuffers  _vkCmdBindVertexBuffers;
+        PFN_vkCmdBindIndexBuffer    _vkCmdBindIndexBuffer;
+        PFN_vkCmdBindDescriptorSets _vkCmdBindDescriptorSets;
+        PFN_vkCmdDrawIndexed        _vkCmdDrawIndexed;
+        PFN_vkCmdClearAttachments   _vkCmdClearAttachments;
 
 
     private:
