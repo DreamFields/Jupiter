@@ -44,7 +44,7 @@ namespace Mercury
 
         m_rhi->popEvent(m_rhi->getCurrentCommandBuffer());
 
-        std::cout << "debug draw manager::draw" << std::endl;
+        // std::cout << "debug draw manager::draw" << std::endl;
     }
 
     // todo

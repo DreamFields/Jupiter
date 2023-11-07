@@ -750,13 +750,14 @@ namespace Mercury
                 VK_NULL_HANDLE,
                 &m_current_swapchain_image_index);
 
-        if (VK_ERROR_OUT_OF_DATE_KHR == acquire_image_result)
+        // https://vulkan-tutorial.com/Drawing_a_triangle/Swap_chain_recreation#page_Suboptimal-or-out-of-date-swap-chain
+        if (VK_ERROR_OUT_OF_DATE_KHR == acquire_image_result) // 交换链已与表面不兼容，不能再用于呈现。通常发生在调整窗口大小之后。
         {
             recreateSwapchain();
             passUpdateAfterRecreateSwapchain();
             return RHI_SUCCESS;
         }
-        else if (VK_SUBOPTIMAL_KHR == acquire_image_result)
+        else if (VK_SUBOPTIMAL_KHR == acquire_image_result) // 交换链仍可用于成功呈现曲面，但曲面属性已不再完全匹配。
         {
             recreateSwapchain();
             passUpdateAfterRecreateSwapchain();
@@ -1667,6 +1668,7 @@ namespace Mercury
         }
     }
 
+    // https://vulkan-tutorial.com/Drawing_a_triangle/Swap_chain_recreation
     void VulkanRHI::recreateSwapchain() {
         int width = 0;
         int height = 0;
