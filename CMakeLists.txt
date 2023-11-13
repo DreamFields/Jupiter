@@ -11,3 +11,6 @@ set(CMAKE_INSTALL_PREFIX "${MERCURY_ROOT_DIR}/bin")
 set(BINARY_ROOT_DIR "${CMAKE_INSTALL_PREFIX}/")
 
 add_subdirectory(engine) # 添加一个子目录并构建该子目录
+
+# 设置启动项目
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT MercuryEditor)
